@@ -8,7 +8,16 @@
 
 ### 核心功能
 
-1. **符号提取** - 从ArkTS代码中提取以下符号类型：
+1. **代码 Chunk 服务** ⭐ - 基于 AST 的智能代码分割
+   - **语义完整的代码块生成**: 自动提取函数、类、组件、接口、枚举等完整代码块
+   - **上下文增强**: 添加文件路径、类名、导入依赖等元数据头，优化 embedding 效果
+   - **ArkUI 组件特化**: 识别 @Component、@State、生命周期方法等 ArkUI 特性
+   - **依赖关系追溯**: 保留 imports、extends、implements 等依赖信息
+   - **RAG 系统集成就绪**: 提供可直接用于向量化的增强文本
+   - **完整测试覆盖**: 45 个测试全部通过，生产就绪
+   - 详见: [Chunk API 文档](docs/CHUNK_API.md) | [Chunk README](docs/CHUNK_README.md) | [实现总结](docs/CHUNK_IMPLEMENTATION_SUMMARY.md)
+
+2. **符号提取** - 从ArkTS代码中提取以下符号类型：
    - 类 (Class)
    - 接口 (Interface)
    - 方法 (Method)
@@ -65,19 +74,27 @@
 │   └── arkts_processor/
 │       ├── __init__.py            # 包初始化
 │       ├── models.py              # 核心数据模型（包含 ArkUI 支持）
+│       ├── chunk_models.py        # Chunk 数据模型 ⭐ NEW
 │       ├── database/              # 数据库模块
 │       │   ├── __init__.py
 │       │   ├── schema.py          # 数据库Schema定义
 │       │   └── repository.py      # 数据访问层
-│       └── symbol_service/        # 符号服务模块
+│       ├── symbol_service/        # 符号服务模块
+│       │   ├── __init__.py
+│       │   ├── service.py         # 主服务接口
+│       │   ├── ast_traverser.py   # AST遍历器
+│       │   ├── extractor.py       # 符号提取器（包含 ArkUI 支持）
+│       │   ├── scope_analyzer.py  # 作用域分析器
+│       │   ├── type_inference.py  # 类型推导引擎
+│       │   ├── reference_resolver.py  # 引用解析器
+│       │   └── index_service.py   # 符号索引服务
+│       └── chunk_service/         # Chunk 服务模块 ⭐ NEW
 │           ├── __init__.py
-│           ├── service.py         # 主服务接口
-│           ├── ast_traverser.py   # AST遍历器
-│           ├── extractor.py       # 符号提取器（包含 ArkUI 支持）
-│           ├── scope_analyzer.py  # 作用域分析器
-│           ├── type_inference.py  # 类型推导引擎
-│           ├── reference_resolver.py  # 引用解析器
-│           └── index_service.py   # 符号索引服务
+│           ├── service.py         # Chunk 主服务
+│           ├── extractor.py       # Chunk 提取器
+│           ├── enricher.py        # 上下文增强器
+│           ├── metadata_builder.py # 元数据构建器
+│           └── repository.py      # Chunk 数据库层
 │
 ├── tests/                         # 测试目录 📋
 │   ├── README.md                  # 测试文档
@@ -86,6 +103,7 @@
 │   ├── test_arkui_features.ets    # ArkUI 测试用例代码
 │   ├── test_scope_analyzer.py     # 作用域分析器测试
 │   ├── test_repository.py         # 数据库仓库测试
+│   ├── test_chunk_integration.py  # Chunk 服务集成测试 ⭐ NEW
 │   └── *.py                       # 其他历史测试文件
 │
 ├── docs/                          # 文档目录 📚
@@ -93,6 +111,9 @@
 │   ├── ARKUI_SUPPORT_SUMMARY.md   # ArkUI 功能完整文档 ⭐
 │   ├── ARKUI_QUICK_REFERENCE.md   # ArkUI 快速参考 ⭐
 │   ├── AST_ANALYSIS_SUMMARY.md    # AST 节点结构分析
+│   ├── CHUNK_API.md               # Chunk API 文档 ⭐ NEW
+│   ├── CHUNK_README.md            # Chunk 功能说明 ⭐ NEW
+│   ├── CHUNK_IMPLEMENTATION_SUMMARY.md  # Chunk 实现总结 ⭐ NEW
 │   └── archives/                  # 历史文档归档
 │       ├── BUGFIX_SUMMARY.md
 │       ├── EXTRACTOR_FIX_REPORT.md
@@ -105,7 +126,8 @@
 │   └── verify_installation.py     # 环境验证工具
 │
 ├── examples/                      # 示例代码
-│   └── basic_usage.py             # 基本使用示例
+│   ├── basic_usage.py             # 基本使用示例
+│   └── chunk_example.py           # Chunk 服务示例 ⭐ NEW
 │
 ├── README.md                      # 项目主文档
 ├── QUICKSTART.md                  # 快速开始指南
@@ -124,10 +146,15 @@
 
 ### 🔍 快速导航
 
+- **快速开始**: 查看 [`QUICKSTART.md`](QUICKSTART.md) - 包含符号服务和 Chunk 服务的入门指南
+- **了解 Chunk 服务**: 
+  - 功能概述: [`docs/CHUNK_README.md`](docs/CHUNK_README.md)
+  - API 参考: [`docs/CHUNK_API.md`](docs/CHUNK_API.md)
+  - 实现细节: [`docs/CHUNK_IMPLEMENTATION_SUMMARY.md`](docs/CHUNK_IMPLEMENTATION_SUMMARY.md)
+  - 使用示例: [`examples/chunk_example.py`](examples/chunk_example.py)
 - **了解 ArkUI 支持**: 查看 [`docs/ARKUI_QUICK_REFERENCE.md`](docs/ARKUI_QUICK_REFERENCE.md)
 - **运行测试**: 查看 [`tests/README.md`](tests/README.md)
 - **使用工具**: 查看 [`scripts/README.md`](scripts/README.md)
-- **开发指南**: 查看 [`QUICKSTART.md`](QUICKSTART.md)
 
 ## 安装
 

@@ -1,5 +1,7 @@
 # 快速开始指南
 
+本指南将帮助您快速上手 ArkTS 代码处理平台，包括**符号服务**和**Chunk 服务**两大核心功能。
+
 ## 前提条件
 
 在开始之前，请确保您的环境满足以下要求：
@@ -13,7 +15,7 @@
 ### 1. 克隆项目
 
 ```bash
-cd /Users/million_mo/projects/stunning-octo-chainsaw
+cd stunning-octo-chainsaw
 ```
 
 ### 2. 创建虚拟环境（推荐）
@@ -50,11 +52,11 @@ pip install tree-sitter-arkts-open
 ### 在代码中使用
 
 ```python
-import tree_sitter_arkts_open as ts_arkts
+import tree_sitter_arkts as ts_arkts
 from tree_sitter import Language, Parser
 
 # 获取ArkTS语言
-ARKTS_LANGUAGE = Language(ts_arkts.language(), "arkts")
+ARKTS_LANGUAGE = Language(ts_arkts.language())
 
 # 创建解析器
 parser = Parser()
@@ -72,9 +74,8 @@ from arkts_processor import SymbolService
 service = SymbolService(db_path="my_symbols.db")
 
 # 2. 配置解析器
-ARKTS_LANGUAGE = Language(ts_arkts.language(), "arkts")
-parser = Parser()
-parser.set_language(ARKTS_LANGUAGE)
+ARKTS_LANGUAGE = Language(ts_arkts.language())
+parser = Parser(ARKTS_LANGUAGE)
 service.set_parser(parser)
 
 # 3. 处理文件
@@ -84,7 +85,7 @@ print(f"提取了 {result['symbols']} 个符号")
 
 ## 基本使用
 
-### 示例 1：处理单个文件
+### 示例 1：使用符号服务处理单个文件
 
 ```python
 from arkts_processor import SymbolService
@@ -106,7 +107,7 @@ service = SymbolService(db_path="my_symbols.db")
 # print(f"解析了 {result['references']} 个引用")
 ```
 
-### 示例 2：符号查询
+### 示例 2：使用符号服务进行符号查询
 
 ```python
 # 按名称查找
@@ -125,7 +126,7 @@ for func in functions:
     print(f"函数: {func.name}")
 ```
 
-### 示例 3：LSP功能
+### 示例 3：LSP 功能集成
 
 ```python
 # 跳转到定义
@@ -150,20 +151,219 @@ for symbol in completions:
     print(f"补全项: {symbol.name}")
 ```
 
+## 使用 Chunk 服务
+
+> ⭐ **Chunk 服务**是针对 RAG（检索增强生成）应用优化的代码块生成服务，能够自动提取语义完整的代码块并增强上下文。
+
+### Chunk 服务特性
+
+- ✅ **语义完整性**: 自动提取函数、类、组件等完整代码块
+- ✅ **上下文增强**: 自动添加文件路径、类名、导入依赖等元数据头
+- ✅ **ArkUI 特化**: 识别装饰器、状态变量、生命周期方法
+- ✅ **依赖追溯**: 保留 imports、extends、implements 关系
+- ✅ **Embedding 就绪**: 生成可直接用于向量化的增强文本
+
+### 示例 4：快速体验 Chunk 服务
+
+```python
+import tree_sitter
+import tree_sitter_arkts as ts_arkts
+from arkts_processor.symbol_service.service import SymbolService
+from arkts_processor.chunk_service.service import ChunkService
+
+# 1. 初始化符号服务
+symbol_service = SymbolService("symbols.db")
+parser = tree_sitter.Parser(tree_sitter.Language(ts_arkts.language()))
+symbol_service.set_parser(parser)
+
+# 2. 初始化 Chunk 服务
+chunk_service = ChunkService(symbol_service, "chunks.db")
+
+# 3. 为文件生成 Chunk
+chunks = chunk_service.generate_chunks("example.ets")
+print(f"生成了 {len(chunks)} 个 Chunk")
+
+# 4. 查看 Chunk 信息
+for chunk in chunks[:3]:  # 显示前 3 个
+    print(f"\n{chunk.name} ({chunk.type.value})")
+    print(f"  - Context: {chunk.context}")
+    print(f"  - Imports: {', '.join(chunk.imports) if chunk.imports else 'None'}")
+
+# 5. 获取可嵌入文本（用于 RAG）
+embedable_texts = chunk_service.get_embedable_texts("example.ets")
+for item in embedable_texts:
+    # 可以直接用于 embedding 模型
+    text = item['text']  # 包含元数据头 + 原始代码
+    chunk_id = item['chunk_id']  # 唯一标识符
+    metadata = item['metadata']  # 完整元数据
+```
+
+### 示例 5：Chunk 查询和搜索
+
+```python
+# 按 ID 查询
+chunk = chunk_service.get_chunk_by_id("example.ets#MyClass")
+if chunk:
+    print(f"找到 Chunk: {chunk.name}")
+
+# 按文件查询
+chunks = chunk_service.get_chunks_by_file("example.ets")
+print(f"文件包含 {len(chunks)} 个 Chunk")
+
+# 按类型查询
+from arkts_processor.chunk_models import ChunkType
+functions = chunk_service.get_chunks_by_type(ChunkType.FUNCTION)
+print(f"找到 {len(functions)} 个函数 Chunk")
+
+# 名称搜索
+results = chunk_service.search_chunks("get", limit=5)
+for chunk in results:
+    print(f"  - {chunk.name} ({chunk.type.value})")
+
+# 查找相关 Chunk
+related = chunk_service.get_related_chunks(chunk.chunk_id)
+print(f"找到 {len(related)} 个相关 Chunk")
+```
+
+### 示例 6：RAG 集成完整流程
+
+```python
+import tree_sitter
+import tree_sitter_arkts as ts_arkts
+from arkts_processor.symbol_service.service import SymbolService
+from arkts_processor.chunk_service.service import ChunkService
+
+# 1. 初始化服务
+parser = tree_sitter.Parser(tree_sitter.Language(ts_arkts.language()))
+symbol_service = SymbolService("symbols.db")
+symbol_service.set_parser(parser)
+chunk_service = ChunkService(symbol_service, "chunks.db")
+
+# 2. 处理项目中的所有 .ets 文件
+from pathlib import Path
+
+project_files = list(Path("./src").rglob("*.ets"))
+for file_path in project_files:
+    chunks = chunk_service.generate_chunks(str(file_path))
+    print(f"处理了 {file_path}: {len(chunks)} 个 Chunk")
+
+# 3. 获取所有可嵌入文本
+all_embedable = []
+for file_path in project_files:
+    embedable = chunk_service.get_embedable_texts(str(file_path))
+    all_embedable.extend(embedable)
+
+print(f"\n总计 {len(all_embedable)} 个可嵌入文本")
+
+# 4. 与 embedding 模型集成（示意）
+# from sentence_transformers import SentenceTransformer
+# model = SentenceTransformer('all-MiniLM-L6-v2')
+# 
+# for item in all_embedable:
+#     vector = model.encode(item['text'])
+#     # 存储到向量数据库
+#     vector_db.insert(
+#         id=item['chunk_id'],
+#         vector=vector,
+#         metadata=item['metadata']
+#     )
+
+# 5. 查看增强后的文本格式
+if all_embedable:
+    sample = all_embedable[0]
+    print("\n增强文本示例:")
+    print("-" * 60)
+    print(sample['text'][:500])  # 显示前 500 字符
+```
+
+### 上下文增强格式说明
+
+**通用函数/类:**
+```
+# file: src/services/user_service.ts
+# class: UserService
+# function: getUserProfile
+# imports: [UserRepo, AuthService]
+# tags: [async, public]
+# return_type: Promise<User>
+
+function getUserProfile(id: string): Promise<User> {
+  return UserRepo.findById(id);
+}
+```
+
+**ArkUI 组件:**
+```
+# file: src/views/Login.ets
+# component: LoginView
+# component_type: Entry
+# decorators: [@Component, @Entry]
+# state_vars: [username: string, password: string]
+# lifecycle_hooks: [aboutToAppear]
+# imports: [router, promptAction]
+# tags: [ui-component, entry]
+
+@Component
+struct LoginView {
+  @State username: string = ''
+  @State password: string = ''
+  
+  aboutToAppear() { /* ... */ }
+  build() { /* ... */ }
+}
+```
+
 ## 运行示例代码
 
-### 运行基本使用示例
+### 运行符号服务示例
 
 ```bash
 python examples/basic_usage.py
 ```
 
 该示例展示了：
-- 服务初始化
-- 符号查询
+- 符号服务初始化
+- 符号查询和搜索
 - 统计信息获取
 
-**注意**：由于缺少ArkTS解析器，示例使用模拟数据演示功能。
+### 运行 Chunk 服务示例 ⭐
+
+```bash
+python examples/chunk_example.py
+```
+
+该示例展示了 6 个完整场景：
+
+1. **生成 Chunk**: 为单个文件生成代码块
+2. **查询 Chunk**: 按 ID、文件、类型、名称查询
+3. **相关 Chunk**: 查找具有依赖关系的 Chunk
+4. **增强文本**: 查看用于 Embedding 的增强文本
+5. **JSON 导出**: 导出 Chunk 数据为 JSON 格式
+6. **统计信息**: 获取 Chunk 统计数据
+
+**输出示例**：
+```
+========================================
+示例 1：为单个文件生成 Chunk
+========================================
+
+正在处理文件: example.ets
+
+生成了 15 个 Chunk:
+
+1. Person (class)
+   - ID: example.ets#Person
+   - Context: Person
+   - Imports: None
+   - Tags: class, has-constructor
+   - Range: L10-L45
+
+2. getName (function)
+   - ID: example.ets#Person.getName
+   - Context: Person.getName
+   - Tags: function, public, pure-function
+   - Return Type: string
+```
 
 ## 运行测试
 
@@ -175,6 +375,8 @@ pytest tests/ -v
 
 ### 运行特定测试
 
+#### 符号服务测试
+
 ```bash
 # 测试数据库仓库
 pytest tests/test_repository.py -v
@@ -184,7 +386,31 @@ pytest tests/test_extractor.py -v
 
 # 测试集成功能
 pytest tests/test_integration.py -v
+
+# 测试 ArkUI 支持
+pytest tests/test_arkui_support.py -v
 ```
+
+#### Chunk 服务测试 ⭐
+
+```bash
+# 运行所有 Chunk 测试
+./run_chunk_tests.sh
+
+# 或分别运行
+pytest tests/test_chunk_extractor.py -v        # Chunk 提取器测试 (7 个)
+pytest tests/test_context_enricher.py -v       # 上下文增强器测试 (6 个)
+pytest tests/test_metadata_builder.py -v       # 元数据构建器测试 (13 个)
+pytest tests/test_chunk_integration.py -v      # Chunk 集成测试 (13 个)
+
+# 运行 Chunk 验证脚本
+python verify_chunk_service.py
+```
+
+**测试覆盖**：
+- 符号服务：19 个单元测试 ✅
+- Chunk 服务：39 个测试 (26 个单元 + 13 个集成) ✅
+- 总计：58 个测试，100% 通过率 ✅
 
 ### 生成覆盖率报告
 
@@ -198,15 +424,25 @@ pytest tests/ --cov=arkts_processor --cov-report=html
 ```
 stunning-octo-chainsaw/
 ├── src/arkts_processor/          # 核心代码
-│   ├── models.py                  # 数据模型
+│   ├── models.py                  # 符号数据模型
+│   ├── chunk_models.py            # Chunk 数据模型 ⭐
 │   ├── database/                  # 数据库层
-│   └── symbol_service/            # 符号服务
+│   ├── symbol_service/            # 符号服务
+│   └── chunk_service/             # Chunk 服务 ⭐
 ├── tests/                         # 测试代码
+│   ├── test_extractor.py          # 符号提取器测试
+│   ├── test_chunk_*.py            # Chunk 服务测试 ⭐
+│   └── ...                        # 其他测试
 ├── examples/                      # 示例代码
+│   ├── basic_usage.py             # 符号服务示例
+│   └── chunk_example.py           # Chunk 服务示例 ⭐
+├── docs/                          # 文档
+│   ├── CHUNK_README.md            # Chunk 功能说明 ⭐
+│   ├── CHUNK_API.md               # Chunk API 文档 ⭐
+│   └── ...                        # 其他文档
 ├── requirements.txt               # 依赖
 ├── setup.py                       # 安装配置
-├── README.md                      # 项目文档
-├── IMPLEMENTATION_SUMMARY.md      # 实现总结
+├── README.md                      # 项目主文档
 └── QUICKSTART.md                  # 本文件
 ```
 
@@ -227,15 +463,34 @@ stunning-octo-chainsaw/
 pip install -e .
 ```
 
+### Q3: Chunk 服务和符号服务有什么区别？
+
+**A**: 
+- **符号服务**: 提供代码符号的精确分析，用于 LSP、代码导航等场景
+- **Chunk 服务**: 基于符号服务，专为 RAG 应用优化，提供语义完整的代码块和增强上下文
+
+```python
+# 两者可以一起使用
+symbol_service = SymbolService("symbols.db")
+chunk_service = ChunkService(symbol_service, "chunks.db")
+```
+
 ### Q4: 如何处理大型项目？
 
 **A**: 
 ```python
-# 批量处理文件
+# 符号服务 - 批量处理文件
 file_list = ["file1.ets", "file2.ets", "file3.ets"]
 results = service.process_files(file_list)
 for result in results:
     print(result)
+
+# Chunk 服务 - 批量生成
+from pathlib import Path
+files = list(Path("./src").rglob("*.ets"))
+for file_path in files:
+    chunks = chunk_service.generate_chunks(str(file_path))
+    print(f"处理了 {file_path}: {len(chunks)} 个 Chunk")
 ```
 
 ### Q5: 如何清空数据库？
@@ -255,9 +510,15 @@ service.refresh_file("file.ets")
 ## 下一步
 
 1. **阅读完整文档**：查看 [README.md](README.md) 了解所有功能
-2. **查看实现细节**：阅读 [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)
-3. **参考架构设计**：查看 [.qoder/quests/arkts-code-processing-mvp-architecture.md](.qoder/quests/arkts-code-processing-mvp-architecture.md)
-4. **编写自己的代码**：基于示例开发自己的应用
+2. **了解 Chunk 服务**：
+   - 功能概述：[docs/CHUNK_README.md](docs/CHUNK_README.md)
+   - API 参考：[docs/CHUNK_API.md](docs/CHUNK_API.md)
+   - 实现细节：[docs/CHUNK_IMPLEMENTATION_SUMMARY.md](docs/CHUNK_IMPLEMENTATION_SUMMARY.md)
+3. **了解 ArkUI 支持**：[docs/ARKUI_QUICK_REFERENCE.md](docs/ARKUI_QUICK_REFERENCE.md)
+4. **运行示例代码**：
+   - 符号服务：`python examples/basic_usage.py`
+   - Chunk 服务：`python examples/chunk_example.py`
+5. **编写自己的代码**：基于示例开发自己的应用
 
 ## 获取帮助
 
