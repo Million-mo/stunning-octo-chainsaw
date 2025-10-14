@@ -4,7 +4,7 @@
 提供符号表的CRUD操作和查询功能。
 """
 
-from typing import Optional, List, Dict, Any, Generator
+from typing import ContextManager, Optional, List, Dict, Any, Generator, cast
 from sqlalchemy import create_engine, and_, or_
 from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
@@ -91,7 +91,7 @@ class SymbolRepository:
     
     # ========== 作用域操作 ==========
     
-    def save_scope(self, scope: Scope) -> int:
+    def save_scope(self, scope: Scope):
         """保存作用域"""
         with self.db_manager.get_session() as session:
             scope_model = ScopeModel(
@@ -109,7 +109,7 @@ class SymbolRepository:
             
             session.add(scope_model)
             session.flush()
-            scope.id = scope_model.id
+            scope.id = cast(int, scope_model.id)
             return scope_model.id
     
     def get_scope_by_id(self, scope_id: int) -> Optional[Scope]:
@@ -130,7 +130,7 @@ class SymbolRepository:
     
     # ========== 符号操作 ==========
     
-    def save_symbol(self, symbol: Symbol) -> int:
+    def save_symbol(self, symbol: Symbol):
         """保存符号"""
         with self.db_manager.get_session() as session:
             # 保存类型信息
@@ -171,7 +171,7 @@ class SymbolRepository:
             
             session.add(symbol_model)
             session.flush()
-            symbol.id = symbol_model.id
+            symbol.id = cast(int, symbol_model.id)
             return symbol_model.id
     
     def get_symbol_by_id(self, symbol_id: int) -> Optional[Symbol]:
@@ -244,8 +244,8 @@ class SymbolRepository:
             
             session.add(ref_model)
             session.flush()
-            reference.id = ref_model.id
-            return ref_model.id
+            reference.id = cast(int, ref_model.id)
+            return cast(int, ref_model.id)
     
     def get_references_by_symbol(self, symbol_id: int) -> List[Reference]:
         """获取符号的所有引用"""
@@ -309,7 +309,8 @@ class SymbolRepository:
                 session.add(symbol_model)
                 session.flush()
                 ids.append(symbol_model.id)
-                symbol.id = symbol_model.id
+                symbol.id = cast(int, symbol_model.id)
+                
             
             return ids
     
