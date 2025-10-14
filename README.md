@@ -60,32 +60,74 @@
 ## 项目结构
 
 ```
-src/arkts_processor/
-├── __init__.py                    # 包初始化
-├── models.py                      # 核心数据模型
-├── database/                      # 数据库模块
-│   ├── __init__.py
-│   ├── schema.py                  # 数据库Schema定义
-│   └── repository.py              # 数据访问层
-└── symbol_service/                # 符号服务模块
-    ├── __init__.py
-    ├── service.py                 # 主服务接口
-    ├── ast_traverser.py           # AST遍历器
-    ├── extractor.py               # 符号提取器
-    ├── scope_analyzer.py          # 作用域分析器
-    ├── type_inference.py          # 类型推导引擎
-    ├── reference_resolver.py      # 引用解析器
-    └── index_service.py           # 符号索引服务
-
-tests/                             # 测试模块
-├── __init__.py
-├── test_extractor.py              # 符号提取器测试
-├── test_scope_analyzer.py         # 作用域分析器测试
-└── test_repository.py             # 数据库仓库测试
-
-examples/                          # 示例代码
-└── basic_usage.py                 # 基本使用示例
+.
+├── src/                           # 源代码目录
+│   └── arkts_processor/
+│       ├── __init__.py            # 包初始化
+│       ├── models.py              # 核心数据模型（包含 ArkUI 支持）
+│       ├── database/              # 数据库模块
+│       │   ├── __init__.py
+│       │   ├── schema.py          # 数据库Schema定义
+│       │   └── repository.py      # 数据访问层
+│       └── symbol_service/        # 符号服务模块
+│           ├── __init__.py
+│           ├── service.py         # 主服务接口
+│           ├── ast_traverser.py   # AST遍历器
+│           ├── extractor.py       # 符号提取器（包含 ArkUI 支持）
+│           ├── scope_analyzer.py  # 作用域分析器
+│           ├── type_inference.py  # 类型推导引擎
+│           ├── reference_resolver.py  # 引用解析器
+│           └── index_service.py   # 符号索引服务
+│
+├── tests/                         # 测试目录 📋
+│   ├── README.md                  # 测试文档
+│   ├── test_extractor.py          # 符号提取器测试（5个基础测试）
+│   ├── test_arkui_support.py      # ArkUI 功能测试
+│   ├── test_arkui_features.ets    # ArkUI 测试用例代码
+│   ├── test_scope_analyzer.py     # 作用域分析器测试
+│   ├── test_repository.py         # 数据库仓库测试
+│   └── *.py                       # 其他历史测试文件
+│
+├── docs/                          # 文档目录 📚
+│   ├── README.md                  # 文档索引
+│   ├── ARKUI_SUPPORT_SUMMARY.md   # ArkUI 功能完整文档 ⭐
+│   ├── ARKUI_QUICK_REFERENCE.md   # ArkUI 快速参考 ⭐
+│   ├── AST_ANALYSIS_SUMMARY.md    # AST 节点结构分析
+│   └── archives/                  # 历史文档归档
+│       ├── BUGFIX_SUMMARY.md
+│       ├── EXTRACTOR_FIX_REPORT.md
+│       └── *.md                   # 其他历史文档
+│
+├── scripts/                       # 工具脚本目录 🔧
+│   ├── README.md                  # 脚本使用说明
+│   ├── inspect_ast.py             # AST 结构检查工具
+│   ├── inspect_arkui_ast.py       # ArkUI AST 检查工具
+│   └── verify_installation.py     # 环境验证工具
+│
+├── examples/                      # 示例代码
+│   └── basic_usage.py             # 基本使用示例
+│
+├── README.md                      # 项目主文档
+├── QUICKSTART.md                  # 快速开始指南
+├── CHANGELOG.md                   # 变更日志
+├── requirements.txt               # Python 依赖
+└── setup.py                       # 安装配置
 ```
+
+### 📂 目录说明
+
+- **`src/`** - 核心源代码，包含符号提取器和 ArkUI 框架支持
+- **`tests/`** - 所有测试文件，包含基础测试和 ArkUI 专项测试
+- **`docs/`** - 项目文档，核心文档在根目录，历史文档在 archives 子目录
+- **`scripts/`** - 开发和调试工具脚本
+- **`examples/`** - 使用示例代码
+
+### 🔍 快速导航
+
+- **了解 ArkUI 支持**: 查看 [`docs/ARKUI_QUICK_REFERENCE.md`](docs/ARKUI_QUICK_REFERENCE.md)
+- **运行测试**: 查看 [`tests/README.md`](tests/README.md)
+- **使用工具**: 查看 [`scripts/README.md`](scripts/README.md)
+- **开发指南**: 查看 [`QUICKSTART.md`](QUICKSTART.md)
 
 ## 安装
 
@@ -116,6 +158,7 @@ pip install -e .
 
 ```python
 import tree_sitter
+import tree_sitter_arkts as ts_arkts
 from arkts_processor import SymbolService
 
 # 1. 初始化符号服务
@@ -124,7 +167,7 @@ service = SymbolService(db_path="arkts_symbols.db")
 # 2. 配置tree-sitter解析器
 parser = tree_sitter.Parser()
 # 需要先编译ArkTS语言库
-arkts_language = tree_sitter.Language('path/to/arkts.so', 'arkts')
+arkts_language = tree_sitter.Language(ts_arkts)
 parser.set_language(arkts_language)
 service.set_parser(parser)
 

@@ -25,6 +25,13 @@ class SymbolType(Enum):
     NAMESPACE = "namespace"
     TYPE_ALIAS = "type_alias"
     CONSTRUCTOR = "constructor"
+    
+    # ArkUI 特有符号类型
+    COMPONENT = "component"  # ArkUI 组件 (@Component struct)
+    STYLE_FUNCTION = "style_function"  # @Styles 样式函数
+    EXTEND_FUNCTION = "extend_function"  # @Extend 扩展函数
+    BUILD_METHOD = "build_method"  # build() 构建方法
+    LIFECYCLE_METHOD = "lifecycle_method"  # 生命周期方法
 
 
 class ScopeType(Enum):
@@ -139,6 +146,13 @@ class Symbol:
     documentation: Optional[str] = None
     decorators: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    
+    # ArkUI 特有元数据
+    arkui_decorators: Dict[str, Any] = field(default_factory=dict)  # ArkUI 装饰器详情
+    component_type: Optional[str] = None  # 组件类型（Entry, Component, Preview）
+    style_bindings: List[str] = field(default_factory=list)  # 样式绑定
+    event_handlers: Dict[str, str] = field(default_factory=dict)  # 事件处理器
+    resource_refs: List[str] = field(default_factory=list)  # 资源引用
     
     # 时间戳
     created_at: Optional[datetime] = None

@@ -1,0 +1,346 @@
+================================================================================
+Tree-sitter-arkts AST 结构分析
+================================================================================
+
+================================================================================
+测试用例: class_declaration
+================================================================================
+源代码:
+
+export class MyClass extends BaseClass implements IMyInterface {
+    private name: string;
+    
+    constructor(name: string) {
+        this.name = name;
+    }
+    
+    public getName(): string {
+        return this.name;
+    }
+}
+
+
+AST 结构:
+source_file [Point(row=1, column=0)-Point(row=12, column=0)] | Text: 'export class MyClass extends BaseClass implements ...'
+  export_declaration [Point(row=1, column=0)-Point(row=11, column=1)] | Text: 'export class MyClass extends BaseClass implements ...'
+    export [Point(row=1, column=0)-Point(row=1, column=6)] | Text: 'export'
+    class_declaration [Point(row=1, column=7)-Point(row=11, column=1)] | Text: 'class MyClass extends BaseClass implements IMyInte...'
+      class [Point(row=1, column=7)-Point(row=1, column=12)] | Text: 'class'
+      identifier [Point(row=1, column=13)-Point(row=1, column=20)] | Text: 'MyClass'
+      extends [Point(row=1, column=21)-Point(row=1, column=28)] | Text: 'extends'
+      type_annotation [Point(row=1, column=29)-Point(row=1, column=38)] | Text: 'BaseClass'
+        identifier [Point(row=1, column=29)-Point(row=1, column=38)] | Text: 'BaseClass'
+      ERROR [Point(row=1, column=39)-Point(row=1, column=62)] | Text: 'implements IMyInterface'
+        ERROR [Point(row=1, column=39)-Point(row=1, column=46)] | Text: 'impleme'
+        ERROR [Point(row=1, column=48)-Point(row=1, column=54)] | Text: 's IMyI'
+        ERROR [Point(row=1, column=56)-Point(row=1, column=57)] | Text: 'e'
+        ERROR [Point(row=1, column=59)-Point(row=1, column=62)] | Text: 'ace'
+      class_body [Point(row=1, column=63)-Point(row=11, column=1)] | Text: '{\n    private name: string;\n    \n    constructor(n...'
+        { [Point(row=1, column=63)-Point(row=1, column=64)] | Text: '{'
+        property_declaration [Point(row=2, column=4)-Point(row=2, column=25)] | Text: 'private name: string;'
+          private [Point(row=2, column=4)-Point(row=2, column=11)] | Text: 'private'
+          identifier [Point(row=2, column=12)-Point(row=2, column=16)] | Text: 'name'
+          : [Point(row=2, column=16)-Point(row=2, column=17)] | Text: ':'
+          type_annotation [Point(row=2, column=18)-Point(row=2, column=24)] | Text: 'string'
+            string [Point(row=2, column=18)-Point(row=2, column=24)] | Text: 'string'
+          ; [Point(row=2, column=24)-Point(row=2, column=25)] | Text: ';'
+        constructor_declaration [Point(row=4, column=4)-Point(row=6, column=5)] | Text: 'constructor(name: string) {\n        this.name = na...'
+          constructor [Point(row=4, column=4)-Point(row=4, column=15)] | Text: 'constructor'
+          parameter_list [Point(row=4, column=15)-Point(row=4, column=29)] | Text: '(name: string)'
+            ( [Point(row=4, column=15)-Point(row=4, column=16)] | Text: '('
+            parameter [Point(row=4, column=16)-Point(row=4, column=28)] | Text: 'name: string'
+              identifier [Point(row=4, column=16)-Point(row=4, column=20)] | Text: 'name'
+              : [Point(row=4, column=20)-Point(row=4, column=21)] | Text: ':'
+              type_annotation [Point(row=4, column=22)-Point(row=4, column=28)] | Text: 'string'
+                string [Point(row=4, column=22)-Point(row=4, column=28)] | Text: 'string'
+            ) [Point(row=4, column=28)-Point(row=4, column=29)] | Text: ')'
+          block_statement [Point(row=4, column=30)-Point(row=6, column=5)] | Text: '{\n        this.name = name;\n    }'
+            { [Point(row=4, column=30)-Point(row=4, column=31)] | Text: '{'
+            statement [Point(row=5, column=8)-Point(row=5, column=25)] | Text: 'this.name = name;'
+              expression_statement [Point(row=5, column=8)-Point(row=5, column=25)] | Text: 'this.name = name;'
+                expression [Point(row=5, column=8)-Point(row=5, column=24)] | Text: 'this.name = name'
+                  assignment_expression [Point(row=5, column=8)-Point(row=5, column=24)] | Text: 'this.name = name'
+                    member_expression [Point(row=5, column=8)-Point(row=5, column=17)] | Text: 'this.name'
+                      expression [Point(row=5, column=8)-Point(row=5, column=12)] | Text: 'this'
+                        identifier [Point(row=5, column=8)-Point(row=5, column=12)] | Text: 'this'
+                      . [Point(row=5, column=12)-Point(row=5, column=13)] | Text: '.'
+                      identifier [Point(row=5, column=13)-Point(row=5, column=17)] | Text: 'name'
+                    = [Point(row=5, column=18)-Point(row=5, column=19)] | Text: '='
+                    expression [Point(row=5, column=20)-Point(row=5, column=24)] | Text: 'name'
+                      identifier [Point(row=5, column=20)-Point(row=5, column=24)] | Text: 'name'
+                ; [Point(row=5, column=24)-Point(row=5, column=25)] | Text: ';'
+            } [Point(row=6, column=4)-Point(row=6, column=5)] | Text: '}'
+        method_declaration [Point(row=8, column=4)-Point(row=10, column=5)] | Text: 'public getName(): string {\n        return this.nam...'
+          public [Point(row=8, column=4)-Point(row=8, column=10)] | Text: 'public'
+          identifier [Point(row=8, column=11)-Point(row=8, column=18)] | Text: 'getName'
+          parameter_list [Point(row=8, column=18)-Point(row=8, column=20)] | Text: '()'
+            ( [Point(row=8, column=18)-Point(row=8, column=19)] | Text: '('
+            ) [Point(row=8, column=19)-Point(row=8, column=20)] | Text: ')'
+          : [Point(row=8, column=20)-Point(row=8, column=21)] | Text: ':'
+          type_annotation [Point(row=8, column=22)-Point(row=8, column=28)] | Text: 'string'
+            string [Point(row=8, column=22)-Point(row=8, column=28)] | Text: 'string'
+          block_statement [Point(row=8, column=29)-Point(row=10, column=5)] | Text: '{\n        return this.name;\n    }'
+            { [Point(row=8, column=29)-Point(row=8, column=30)] | Text: '{'
+            statement [Point(row=9, column=8)-Point(row=9, column=25)] | Text: 'return this.name;'
+              return_statement [Point(row=9, column=8)-Point(row=9, column=25)] | Text: 'return this.name;'
+                return [Point(row=9, column=8)-Point(row=9, column=14)] | Text: 'return'
+                expression [Point(row=9, column=15)-Point(row=9, column=24)] | Text: 'this.name'
+                  member_expression [Point(row=9, column=15)-Point(row=9, column=24)] | Text: 'this.name'
+                    expression [Point(row=9, column=15)-Point(row=9, column=19)] | Text: 'this'
+                      identifier [Point(row=9, column=15)-Point(row=9, column=19)] | Text: 'this'
+                    . [Point(row=9, column=19)-Point(row=9, column=20)] | Text: '.'
+                    identifier [Point(row=9, column=20)-Point(row=9, column=24)] | Text: 'name'
+                ; [Point(row=9, column=24)-Point(row=9, column=25)] | Text: ';'
+            } [Point(row=10, column=4)-Point(row=10, column=5)] | Text: '}'
+        } [Point(row=11, column=0)-Point(row=11, column=1)] | Text: '}'
+
+
+================================================================================
+测试用例: interface_declaration
+================================================================================
+源代码:
+
+interface Person {
+    name: string;
+    age: number;
+    greet(): void;
+}
+
+
+AST 结构:
+source_file [Point(row=1, column=0)-Point(row=6, column=0)] | Text: 'interface Person {\n    name: string;\n    age: numb...'
+  interface_declaration [Point(row=1, column=0)-Point(row=5, column=1)] | Text: 'interface Person {\n    name: string;\n    age: numb...'
+    interface [Point(row=1, column=0)-Point(row=1, column=9)] | Text: 'interface'
+    identifier [Point(row=1, column=10)-Point(row=1, column=16)] | Text: 'Person'
+    object_type [Point(row=1, column=17)-Point(row=5, column=1)] | Text: '{\n    name: string;\n    age: number;\n    greet(): ...'
+      { [Point(row=1, column=17)-Point(row=1, column=18)] | Text: '{'
+      type_member [Point(row=2, column=4)-Point(row=4, column=17)] | Text: 'name: string;\n    age: number;\n    greet(): void'
+        identifier [Point(row=2, column=4)-Point(row=2, column=8)] | Text: 'name'
+        ERROR [Point(row=2, column=8)-Point(row=4, column=11)] | Text: ': string;\n    age: number;\n    greet()'
+          : [Point(row=2, column=8)-Point(row=2, column=9)] | Text: ':'
+          type_annotation [Point(row=2, column=10)-Point(row=2, column=16)] | Text: 'string'
+            string [Point(row=2, column=10)-Point(row=2, column=16)] | Text: 'string'
+          ; [Point(row=2, column=16)-Point(row=2, column=17)] | Text: ';'
+          ERROR [Point(row=3, column=4)-Point(row=3, column=7)] | Text: 'age'
+          : [Point(row=3, column=7)-Point(row=3, column=8)] | Text: ':'
+          type_annotation [Point(row=3, column=9)-Point(row=3, column=15)] | Text: 'number'
+            number [Point(row=3, column=9)-Point(row=3, column=15)] | Text: 'number'
+          ; [Point(row=3, column=15)-Point(row=3, column=16)] | Text: ';'
+          ERROR [Point(row=4, column=4)-Point(row=4, column=5)] | Text: 'g'
+          ERROR [Point(row=4, column=6)-Point(row=4, column=8)] | Text: 'ee'
+          ( [Point(row=4, column=9)-Point(row=4, column=10)] | Text: '('
+          ) [Point(row=4, column=10)-Point(row=4, column=11)] | Text: ')'
+        : [Point(row=4, column=11)-Point(row=4, column=12)] | Text: ':'
+        type_annotation [Point(row=4, column=13)-Point(row=4, column=17)] | Text: 'void'
+          void [Point(row=4, column=13)-Point(row=4, column=17)] | Text: 'void'
+      ERROR [Point(row=4, column=17)-Point(row=4, column=18)] | Text: ';'
+        ; [Point(row=4, column=17)-Point(row=4, column=18)] | Text: ';'
+      } [Point(row=5, column=0)-Point(row=5, column=1)] | Text: '}'
+
+
+================================================================================
+测试用例: function_declaration
+================================================================================
+源代码:
+
+function add(a: number, b: number): number {
+    return a + b;
+}
+
+
+AST 结构:
+source_file [Point(row=1, column=0)-Point(row=4, column=0)] | Text: 'function add(a: number, b: number): number {\n    r...'
+  function_declaration [Point(row=1, column=0)-Point(row=3, column=1)] | Text: 'function add(a: number, b: number): number {\n    r...'
+    function [Point(row=1, column=0)-Point(row=1, column=8)] | Text: 'function'
+    identifier [Point(row=1, column=9)-Point(row=1, column=12)] | Text: 'add'
+    parameter_list [Point(row=1, column=12)-Point(row=1, column=34)] | Text: '(a: number, b: number)'
+      ( [Point(row=1, column=12)-Point(row=1, column=13)] | Text: '('
+      parameter [Point(row=1, column=13)-Point(row=1, column=22)] | Text: 'a: number'
+        identifier [Point(row=1, column=13)-Point(row=1, column=14)] | Text: 'a'
+        : [Point(row=1, column=14)-Point(row=1, column=15)] | Text: ':'
+        type_annotation [Point(row=1, column=16)-Point(row=1, column=22)] | Text: 'number'
+          number [Point(row=1, column=16)-Point(row=1, column=22)] | Text: 'number'
+      , [Point(row=1, column=22)-Point(row=1, column=23)] | Text: ','
+      parameter [Point(row=1, column=24)-Point(row=1, column=33)] | Text: 'b: number'
+        identifier [Point(row=1, column=24)-Point(row=1, column=25)] | Text: 'b'
+        : [Point(row=1, column=25)-Point(row=1, column=26)] | Text: ':'
+        type_annotation [Point(row=1, column=27)-Point(row=1, column=33)] | Text: 'number'
+          number [Point(row=1, column=27)-Point(row=1, column=33)] | Text: 'number'
+      ) [Point(row=1, column=33)-Point(row=1, column=34)] | Text: ')'
+    : [Point(row=1, column=34)-Point(row=1, column=35)] | Text: ':'
+    type_annotation [Point(row=1, column=36)-Point(row=1, column=42)] | Text: 'number'
+      number [Point(row=1, column=36)-Point(row=1, column=42)] | Text: 'number'
+    block_statement [Point(row=1, column=43)-Point(row=3, column=1)] | Text: '{\n    return a + b;\n}'
+      { [Point(row=1, column=43)-Point(row=1, column=44)] | Text: '{'
+      statement [Point(row=2, column=4)-Point(row=2, column=17)] | Text: 'return a + b;'
+        return_statement [Point(row=2, column=4)-Point(row=2, column=17)] | Text: 'return a + b;'
+          return [Point(row=2, column=4)-Point(row=2, column=10)] | Text: 'return'
+          expression [Point(row=2, column=11)-Point(row=2, column=16)] | Text: 'a + b'
+            binary_expression [Point(row=2, column=11)-Point(row=2, column=16)] | Text: 'a + b'
+              expression [Point(row=2, column=11)-Point(row=2, column=12)] | Text: 'a'
+                identifier [Point(row=2, column=11)-Point(row=2, column=12)] | Text: 'a'
+              + [Point(row=2, column=13)-Point(row=2, column=14)] | Text: '+'
+              expression [Point(row=2, column=15)-Point(row=2, column=16)] | Text: 'b'
+                identifier [Point(row=2, column=15)-Point(row=2, column=16)] | Text: 'b'
+          ; [Point(row=2, column=16)-Point(row=2, column=17)] | Text: ';'
+      } [Point(row=3, column=0)-Point(row=3, column=1)] | Text: '}'
+
+
+================================================================================
+测试用例: method_definition
+================================================================================
+源代码:
+
+class Test {
+    async testMethod(param: string): Promise<void> {
+        console.log(param);
+    }
+}
+
+
+AST 结构:
+source_file [Point(row=1, column=0)-Point(row=6, column=0)] | Text: 'class Test {\n    async testMethod(param: string): ...'
+  class_declaration [Point(row=1, column=0)-Point(row=4, column=5)] | Text: 'class Test {\n    async testMethod(param: string): ...'
+    class [Point(row=1, column=0)-Point(row=1, column=5)] | Text: 'class'
+    identifier [Point(row=1, column=6)-Point(row=1, column=10)] | Text: 'Test'
+    ERROR [Point(row=1, column=11)-Point(row=2, column=50)] | Text: '{\n    async testMethod(param: string): Promise<voi...'
+      { [Point(row=1, column=11)-Point(row=1, column=12)] | Text: '{'
+      async [Point(row=2, column=4)-Point(row=2, column=9)] | Text: 'async'
+      identifier [Point(row=2, column=10)-Point(row=2, column=20)] | Text: 'testMethod'
+      ERROR [Point(row=2, column=20)-Point(row=2, column=44)] | Text: '(param: string): Promise'
+        parameter_list [Point(row=2, column=20)-Point(row=2, column=35)] | Text: '(param: string)'
+          ( [Point(row=2, column=20)-Point(row=2, column=21)] | Text: '('
+          parameter [Point(row=2, column=21)-Point(row=2, column=34)] | Text: 'param: string'
+            identifier [Point(row=2, column=21)-Point(row=2, column=26)] | Text: 'param'
+            : [Point(row=2, column=26)-Point(row=2, column=27)] | Text: ':'
+            type_annotation [Point(row=2, column=28)-Point(row=2, column=34)] | Text: 'string'
+              string [Point(row=2, column=28)-Point(row=2, column=34)] | Text: 'string'
+          ) [Point(row=2, column=34)-Point(row=2, column=35)] | Text: ')'
+        : [Point(row=2, column=35)-Point(row=2, column=36)] | Text: ':'
+        identifier [Point(row=2, column=37)-Point(row=2, column=44)] | Text: 'Promise'
+      type_parameters [Point(row=2, column=44)-Point(row=2, column=50)] | Text: '<void>'
+        < [Point(row=2, column=44)-Point(row=2, column=45)] | Text: '<'
+        identifier [Point(row=2, column=45)-Point(row=2, column=49)] | Text: 'void'
+        > [Point(row=2, column=49)-Point(row=2, column=50)] | Text: '>'
+    class_body [Point(row=2, column=51)-Point(row=4, column=5)] | Text: '{\n        console.log(param);\n    }'
+      { [Point(row=2, column=51)-Point(row=2, column=52)] | Text: '{'
+      method_declaration [Point(row=3, column=8)-Point(row=3, column=27)] | Text: 'console.log(param);'
+        identifier [Point(row=3, column=8)-Point(row=3, column=15)] | Text: 'console'
+        ERROR [Point(row=3, column=15)-Point(row=3, column=19)] | Text: '.log'
+          . [Point(row=3, column=15)-Point(row=3, column=16)] | Text: '.'
+          ERROR [Point(row=3, column=16)-Point(row=3, column=19)] | Text: 'log'
+        parameter_list [Point(row=3, column=19)-Point(row=3, column=26)] | Text: '(param)'
+          ( [Point(row=3, column=19)-Point(row=3, column=20)] | Text: '('
+          parameter [Point(row=3, column=20)-Point(row=3, column=25)] | Text: 'param'
+            identifier [Point(row=3, column=20)-Point(row=3, column=25)] | Text: 'param'
+          ) [Point(row=3, column=25)-Point(row=3, column=26)] | Text: ')'
+        ; [Point(row=3, column=26)-Point(row=3, column=27)] | Text: ';'
+      } [Point(row=4, column=4)-Point(row=4, column=5)] | Text: '}'
+  ERROR [Point(row=5, column=0)-Point(row=5, column=1)] | Text: '}'
+    } [Point(row=5, column=0)-Point(row=5, column=1)] | Text: '}'
+
+
+================================================================================
+测试用例: variable_declaration
+================================================================================
+源代码:
+
+const PI: number = 3.14159;
+let counter: number = 0;
+var message: string = "Hello";
+
+
+AST 结构:
+source_file [Point(row=1, column=0)-Point(row=4, column=0)] | Text: 'const PI: number = 3.14159;\nlet counter: number = ...'
+  variable_declaration [Point(row=1, column=0)-Point(row=1, column=27)] | Text: 'const PI: number = 3.14159;'
+    const [Point(row=1, column=0)-Point(row=1, column=5)] | Text: 'const'
+    variable_declarator [Point(row=1, column=6)-Point(row=1, column=26)] | Text: 'PI: number = 3.14159'
+      identifier [Point(row=1, column=6)-Point(row=1, column=8)] | Text: 'PI'
+      : [Point(row=1, column=8)-Point(row=1, column=9)] | Text: ':'
+      type_annotation [Point(row=1, column=10)-Point(row=1, column=16)] | Text: 'number'
+        number [Point(row=1, column=10)-Point(row=1, column=16)] | Text: 'number'
+      = [Point(row=1, column=17)-Point(row=1, column=18)] | Text: '='
+      expression [Point(row=1, column=19)-Point(row=1, column=26)] | Text: '3.14159'
+        numeric_literal [Point(row=1, column=19)-Point(row=1, column=26)] | Text: '3.14159'
+    ; [Point(row=1, column=26)-Point(row=1, column=27)] | Text: ';'
+  variable_declaration [Point(row=2, column=0)-Point(row=2, column=24)] | Text: 'let counter: number = 0;'
+    let [Point(row=2, column=0)-Point(row=2, column=3)] | Text: 'let'
+    variable_declarator [Point(row=2, column=4)-Point(row=2, column=23)] | Text: 'counter: number = 0'
+      identifier [Point(row=2, column=4)-Point(row=2, column=11)] | Text: 'counter'
+      : [Point(row=2, column=11)-Point(row=2, column=12)] | Text: ':'
+      type_annotation [Point(row=2, column=13)-Point(row=2, column=19)] | Text: 'number'
+        number [Point(row=2, column=13)-Point(row=2, column=19)] | Text: 'number'
+      = [Point(row=2, column=20)-Point(row=2, column=21)] | Text: '='
+      expression [Point(row=2, column=22)-Point(row=2, column=23)] | Text: '0'
+        numeric_literal [Point(row=2, column=22)-Point(row=2, column=23)] | Text: '0'
+    ; [Point(row=2, column=23)-Point(row=2, column=24)] | Text: ';'
+  variable_declaration [Point(row=3, column=0)-Point(row=3, column=30)] | Text: 'var message: string = "Hello";'
+    var [Point(row=3, column=0)-Point(row=3, column=3)] | Text: 'var'
+    variable_declarator [Point(row=3, column=4)-Point(row=3, column=29)] | Text: 'message: string = "Hello"'
+      identifier [Point(row=3, column=4)-Point(row=3, column=11)] | Text: 'message'
+      : [Point(row=3, column=11)-Point(row=3, column=12)] | Text: ':'
+      type_annotation [Point(row=3, column=13)-Point(row=3, column=19)] | Text: 'string'
+        string [Point(row=3, column=13)-Point(row=3, column=19)] | Text: 'string'
+      = [Point(row=3, column=20)-Point(row=3, column=21)] | Text: '='
+      expression [Point(row=3, column=22)-Point(row=3, column=29)] | Text: '"Hello"'
+        string_literal [Point(row=3, column=22)-Point(row=3, column=29)] | Text: '"Hello"'
+          " [Point(row=3, column=22)-Point(row=3, column=23)] | Text: '"'
+          " [Point(row=3, column=28)-Point(row=3, column=29)] | Text: '"'
+    ; [Point(row=3, column=29)-Point(row=3, column=30)] | Text: ';'
+
+
+================================================================================
+测试用例: enum_declaration
+================================================================================
+源代码:
+
+enum Color {
+    Red = 0,
+    Green = 1,
+    Blue = 2
+}
+
+
+AST 结构:
+source_file [Point(row=1, column=0)-Point(row=6, column=0)] | Text: 'enum Color {\n    Red = 0,\n    Green = 1,\n    Blue ...'
+  ERROR [Point(row=1, column=0)-Point(row=5, column=1)] | Text: 'enum Color {\n    Red = 0,\n    Green = 1,\n    Blue ...'
+    ERROR [Point(row=1, column=0)-Point(row=1, column=1)] | Text: 'e'
+    ERROR [Point(row=1, column=2)-Point(row=1, column=9)] | Text: 'um Colo'
+    { [Point(row=1, column=11)-Point(row=1, column=12)] | Text: '{'
+    ERROR [Point(row=2, column=4)-Point(row=2, column=7)] | Text: 'Red'
+    = [Point(row=2, column=8)-Point(row=2, column=9)] | Text: '='
+    , [Point(row=2, column=11)-Point(row=2, column=12)] | Text: ','
+    ERROR [Point(row=3, column=4)-Point(row=3, column=8)] | Text: 'Gree'
+    = [Point(row=3, column=10)-Point(row=3, column=11)] | Text: '='
+    , [Point(row=3, column=13)-Point(row=3, column=14)] | Text: ','
+    ERROR [Point(row=4, column=4)-Point(row=4, column=8)] | Text: 'Blue'
+    = [Point(row=4, column=9)-Point(row=4, column=10)] | Text: '='
+    } [Point(row=5, column=0)-Point(row=5, column=1)] | Text: '}'
+
+
+================================================================================
+测试用例: type_alias
+================================================================================
+源代码:
+
+type StringOrNumber = string | number;
+
+
+AST 结构:
+source_file [Point(row=1, column=0)-Point(row=2, column=0)] | Text: 'type StringOrNumber = string | number;\n'
+  type_declaration [Point(row=1, column=0)-Point(row=1, column=38)] | Text: 'type StringOrNumber = string | number;'
+    type [Point(row=1, column=0)-Point(row=1, column=4)] | Text: 'type'
+    identifier [Point(row=1, column=5)-Point(row=1, column=19)] | Text: 'StringOrNumber'
+    = [Point(row=1, column=20)-Point(row=1, column=21)] | Text: '='
+    type_annotation [Point(row=1, column=22)-Point(row=1, column=28)] | Text: 'string'
+      string [Point(row=1, column=22)-Point(row=1, column=28)] | Text: 'string'
+    ERROR [Point(row=1, column=29)-Point(row=1, column=37)] | Text: '| number'
+      | [Point(row=1, column=29)-Point(row=1, column=30)] | Text: '|'
+      ERROR [Point(row=1, column=32)-Point(row=1, column=34)] | Text: 'um'
+      ERROR [Point(row=1, column=35)-Point(row=1, column=36)] | Text: 'e'
+    ; [Point(row=1, column=37)-Point(row=1, column=38)] | Text: ';'
+
+
+================================================================================
+根节点类型: source_file
+================================================================================
