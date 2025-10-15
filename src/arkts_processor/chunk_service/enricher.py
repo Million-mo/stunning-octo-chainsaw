@@ -4,13 +4,22 @@
 为 Chunk 添加层级上下文和元数据头，生成用于 embedding 的增强文本。
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from ..models import Symbol, Scope, SymbolType
 from ..chunk_models import CodeChunk, ChunkType
 
 
 class ContextEnricher:
     """上下文增强器"""
+    
+    # Token 预算配置常量
+    TOKEN_BUDGET_SMALL_THRESHOLD = 100
+    TOKEN_BUDGET_MEDIUM_THRESHOLD = 500
+    MAX_CONTEXT_TOKENS_HIGH = 200
+    MAX_CONTEXT_TOKENS_MEDIUM = 100
+    MAX_CONTEXT_TOKENS_LOW = 50
+    TOKEN_ESTIMATION_MULTIPLIER = 1.3
+    ENABLE_ARKUI_L4_LAYER = True
     
     def __init__(self):
         """初始化上下文增强器"""
@@ -28,8 +37,11 @@ class ContextEnricher:
         Returns:
             增强后的 CodeChunk
         """
+        # 计算 Token 预算
+        budget = self.calculate_context_budget(chunk.source, chunk.type)
+        
         # 构造元数据头
-        metadata_headers = self.format_metadata_headers(chunk, symbol)
+        metadata_headers = self.format_metadata_headers(chunk, symbol, budget)
         
         # 将元数据头添加到源代码前
         enriched_source = f"{metadata_headers}\n\n{chunk.source}"
@@ -67,55 +79,130 @@ class ContextEnricher:
         
         return enriched_chunks
     
-    def format_metadata_headers(self, chunk: CodeChunk, symbol: Symbol) -> str:
+    def estimate_tokens(self, text: str) -> int:
+        """
+        估算文本的 Token 数量
+        
+        使用简化算法：word_count * 1.3（考虑代码中的符号和空格）
+        
+        Args:
+            text: 源代码文本
+            
+        Returns:
+            估算的 Token 数量
+        """
+        if not text:
+            return 0
+        
+        # 按空白字符分词
+        words = text.split()
+        word_count = len(words)
+        
+        # 应用估算系数
+        estimated_tokens = int(word_count * self.TOKEN_ESTIMATION_MULTIPLIER)
+        
+        return estimated_tokens
+    
+    def calculate_context_budget(self, source_text: str, chunk_type: ChunkType) -> Dict[str, Any]:
+        """
+        计算上下文预算
+        
+        根据 Chunk 大小和类型，决定上下文详细程度
+        
+        Args:
+            source_text: Chunk 源代码
+            chunk_type: Chunk 类型
+            
+        Returns:
+            预算配置字典，包含：
+            - detail_level: str (high/medium/low)
+            - max_context_tokens: int
+            - include_siblings: bool
+            - include_parents: bool
+            - enable_l4: bool
+        """
+        # 估算 Chunk 大小
+        chunk_size = self.estimate_tokens(source_text)
+        
+        # 根据大小确定详细等级
+        if chunk_size < self.TOKEN_BUDGET_SMALL_THRESHOLD:
+            detail_level = "high"
+            max_context_tokens = self.MAX_CONTEXT_TOKENS_HIGH
+            include_siblings = True
+            include_parents = True
+        elif chunk_size < self.TOKEN_BUDGET_MEDIUM_THRESHOLD:
+            detail_level = "medium"
+            max_context_tokens = self.MAX_CONTEXT_TOKENS_MEDIUM
+            include_siblings = False
+            include_parents = True
+        else:
+            detail_level = "low"
+            max_context_tokens = self.MAX_CONTEXT_TOKENS_LOW
+            include_siblings = False
+            include_parents = False
+        
+        # ArkUI 组件至少使用 medium 等级
+        if chunk_type == ChunkType.COMPONENT and detail_level == "low":
+            detail_level = "medium"
+            max_context_tokens = self.MAX_CONTEXT_TOKENS_MEDIUM
+            include_parents = True
+        
+        return {
+            "detail_level": detail_level,
+            "max_context_tokens": max_context_tokens,
+            "include_siblings": include_siblings,
+            "include_parents": include_parents,
+            "enable_l4": self.ENABLE_ARKUI_L4_LAYER and chunk_type == ChunkType.COMPONENT
+        }
+    
+    def format_metadata_headers(self, chunk: CodeChunk, symbol: Symbol, 
+                               budget: Optional[Dict[str, Any]] = None) -> str:
         """
         格式化元数据头
         
         Args:
             chunk: CodeChunk 对象
             symbol: 符号对象
+            budget: Token 预算配置（可选）
             
         Returns:
             元数据头字符串
         """
+        # 如果没有提供预算，使用默认配置
+        if budget is None:
+            budget = self.calculate_context_budget(chunk.source, chunk.type)
+        
         headers = []
         
         # 根据 Chunk 类型选择不同的格式
         if chunk.type == ChunkType.COMPONENT:
             # ArkUI 组件格式
-            headers = self._format_component_headers(chunk, symbol)
+            headers = self._format_component_headers(chunk, symbol, budget)
         else:
             # 通用格式
-            headers = self._format_general_headers(chunk, symbol)
+            headers = self._format_general_headers(chunk, symbol, budget)
         
         return "\n".join(headers)
     
-    def _format_general_headers(self, chunk: CodeChunk, symbol: Symbol) -> List[str]:
+    def _format_general_headers(self, chunk: CodeChunk, symbol: Symbol, 
+                               budget: Dict[str, Any]) -> List[str]:
         """
-        格式化通用元数据头
+        格式化通用元数据头（L1-L3 分层）
         
         Args:
             chunk: CodeChunk 对象
             symbol: 符号对象
+            budget: Token 预算配置
             
         Returns:
             元数据头行列表
         """
         headers = []
+        detail_level = budget["detail_level"]
         
+        # L1 层（必要层） - 所有 Chunk 必须包含
         # 文件路径
         headers.append(f"# file: {chunk.path}")
-        
-        # 上下文路径
-        if chunk.context:
-            if chunk.type == ChunkType.FUNCTION:
-                if "." in chunk.context or "/" in chunk.context:
-                    headers.append(f"# class: {chunk.context}")
-                else:
-                    headers.append(f"# module: {chunk.context}")
-            elif chunk.type == ChunkType.CLASS:
-                if chunk.context:
-                    headers.append(f"# module: {chunk.context}")
         
         # 符号类型和名称
         if chunk.type == ChunkType.FUNCTION:
@@ -126,77 +213,119 @@ class ContextEnricher:
             headers.append(f"# interface: {chunk.name}")
         elif chunk.type == ChunkType.ENUM:
             headers.append(f"# enum: {chunk.name}")
+        elif chunk.type == ChunkType.MODULE:
+            headers.append(f"# module: {chunk.name}")
         
-        # 导入列表
-        if chunk.imports:
-            imports_str = ", ".join(chunk.imports)
-            headers.append(f"# imports: [{imports_str}]")
+        # L2 层（重要层） - medium 及以上等级包含
+        if detail_level in ["medium", "high"]:
+            # 上下文路径
+            if budget["include_parents"] and chunk.context:
+                if chunk.type == ChunkType.FUNCTION:
+                    if "." in chunk.context or "/" in chunk.context:
+                        headers.append(f"# class: {chunk.context}")
+                    else:
+                        headers.append(f"# module: {chunk.context}")
+                elif chunk.type == ChunkType.CLASS:
+                    if chunk.context:
+                        headers.append(f"# module: {chunk.context}")
+            
+            # 导入列表
+            if chunk.imports:
+                imports_str = ", ".join(chunk.imports[:10])  # 限制最多 10 个
+                headers.append(f"# imports: [{imports_str}]")
+            
+            # 标签
+            if chunk.metadata and chunk.metadata.tags:
+                tags_str = ", ".join(chunk.metadata.tags[:8])  # 限制最多 8 个
+                headers.append(f"# tags: [{tags_str}]")
         
-        # 装饰器
-        if chunk.metadata and chunk.metadata.decorators:
-            decorators_str = ", ".join(chunk.metadata.decorators)
-            headers.append(f"# decorators: [{decorators_str}]")
-        
-        # 标签
-        if chunk.metadata and chunk.metadata.tags:
-            tags_str = ", ".join(chunk.metadata.tags)
-            headers.append(f"# tags: [{tags_str}]")
-        
-        # 返回类型
-        if chunk.metadata and chunk.metadata.return_type:
-            headers.append(f"# type: {chunk.metadata.return_type.name}")
+        # L3 层（辅助层） - high 等级包含
+        if detail_level == "high":
+            # 装饰器
+            if chunk.metadata and chunk.metadata.decorators:
+                decorators_str = ", ".join(chunk.metadata.decorators)
+                headers.append(f"# decorators: [{decorators_str}]")
+            
+            # 可见性
+            if chunk.metadata and chunk.metadata.visibility and chunk.metadata.visibility != "public":
+                headers.append(f"# visibility: {chunk.metadata.visibility}")
+            
+            # 返回类型
+            if chunk.metadata and chunk.metadata.return_type:
+                headers.append(f"# type: {chunk.metadata.return_type.name}")
         
         return headers
     
-    def _format_component_headers(self, chunk: CodeChunk, symbol: Symbol) -> List[str]:
+    def _format_component_headers(self, chunk: CodeChunk, symbol: Symbol, 
+                                 budget: Dict[str, Any]) -> List[str]:
         """
-        格式化 ArkUI 组件元数据头
+        格式化 ArkUI 组件元数据头（L1-L4 分层）
         
         Args:
             chunk: CodeChunk 对象
             symbol: 符号对象
+            budget: Token 预算配置
             
         Returns:
             元数据头行列表
         """
         headers = []
+        detail_level = budget["detail_level"]
+        enable_l4 = budget.get("enable_l4", True)
         
+        # L1 层（必要层）
         # 文件路径
         headers.append(f"# file: {chunk.path}")
         
         # 组件名称
         headers.append(f"# component: {chunk.name}")
         
-        # 组件类型
-        if chunk.metadata and chunk.metadata.component_type:
-            headers.append(f"# component_type: {chunk.metadata.component_type}")
+        # L4 层（ArkUI 详细层） - 组件专属，优先级高
+        if enable_l4:
+            # 组件类型
+            if chunk.metadata and chunk.metadata.component_type:
+                headers.append(f"# component_type: {chunk.metadata.component_type}")
+            
+            # 装饰器
+            if chunk.metadata and chunk.metadata.decorators:
+                decorators_str = ", ".join(chunk.metadata.decorators)
+                headers.append(f"# decorators: [{decorators_str}]")
+            
+            # 状态变量
+            if chunk.metadata and chunk.metadata.state_vars:
+                state_vars_str = ", ".join([
+                    f"{var['name']}: {var['type']}" for var in chunk.metadata.state_vars[:5]  # 限制 5 个
+                ])
+                headers.append(f"# state_vars: [{state_vars_str}]")
+            
+            # 生命周期方法
+            if chunk.metadata and chunk.metadata.lifecycle_hooks:
+                hooks_str = ", ".join(chunk.metadata.lifecycle_hooks)
+                headers.append(f"# lifecycle_hooks: [{hooks_str}]")
+            
+            # 事件处理器（限制数量）
+            if chunk.metadata and chunk.metadata.event_handlers and detail_level == "high":
+                handlers_str = ", ".join(chunk.metadata.event_handlers[:5])  # 限制 5 个
+                headers.append(f"# event_handlers: [{handlers_str}]")
         
-        # 装饰器
-        if chunk.metadata and chunk.metadata.decorators:
-            decorators_str = ", ".join(chunk.metadata.decorators)
-            headers.append(f"# decorators: [{decorators_str}]")
+        # L2 层（重要层） - medium 及以上等级包含
+        if detail_level in ["medium", "high"]:
+            # 导入列表
+            if chunk.imports:
+                imports_str = ", ".join(chunk.imports[:8])  # 限制最多 8 个
+                headers.append(f"# imports: [{imports_str}]")
+            
+            # 标签
+            if chunk.metadata and chunk.metadata.tags:
+                tags_str = ", ".join(chunk.metadata.tags[:8])  # 限制最多 8 个
+                headers.append(f"# tags: [{tags_str}]")
         
-        # 状态变量
-        if chunk.metadata and chunk.metadata.state_vars:
-            state_vars_str = ", ".join([
-                f"{var['name']}: {var['type']}" for var in chunk.metadata.state_vars
-            ])
-            headers.append(f"# state_vars: [{state_vars_str}]")
-        
-        # 生命周期方法
-        if chunk.metadata and chunk.metadata.lifecycle_hooks:
-            hooks_str = ", ".join(chunk.metadata.lifecycle_hooks)
-            headers.append(f"# lifecycle_hooks: [{hooks_str}]")
-        
-        # 导入列表
-        if chunk.imports:
-            imports_str = ", ".join(chunk.imports)
-            headers.append(f"# imports: [{imports_str}]")
-        
-        # 标签
-        if chunk.metadata and chunk.metadata.tags:
-            tags_str = ", ".join(chunk.metadata.tags)
-            headers.append(f"# tags: [{tags_str}]")
+        # L3 层（辅助层） - high 等级包含
+        if detail_level == "high":
+            # 资源引用
+            if chunk.metadata and chunk.metadata.resource_refs:
+                refs_str = ", ".join(chunk.metadata.resource_refs[:5])  # 限制 5 个
+                headers.append(f"# resource_refs: [{refs_str}]")
         
         return headers
     

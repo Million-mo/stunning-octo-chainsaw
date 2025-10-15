@@ -57,7 +57,7 @@ class ChunkMetadataBuilder:
         dependencies = self.calculate_dependencies(symbol)
         
         # 提取语义标签
-        tags = self._extract_tags(symbol)
+        tags = self.extract_tags(symbol)
         
         # 创建基础元数据
         metadata = ChunkMetadata(
@@ -173,6 +173,15 @@ class ChunkMetadataBuilder:
         """
         计算符号的依赖关系
         
+        从多个来源提取依赖：
+        1. 类型信息 (type_info)
+        2. 返回类型 (return_type)
+        3. 参数类型 (parameters)
+        4. 继承 (extends)
+        5. 实现 (implements)
+        6. 成员类型 (members)
+        7. ArkUI 资源引用 (resource_refs)
+        
         Args:
             symbol: 符号对象
             
@@ -181,36 +190,87 @@ class ChunkMetadataBuilder:
         """
         dependencies = set()
         
-        # 从类型信息中提取
+        # Primitive 类型列表（不包含 Promise, Map, Set, Array 等集合类型）
+        primitive_types = {
+            "string", "number", "boolean", "void", "any", "unknown", "never",
+            "Date", "Object", "Function",
+            "int", "float", "double", "char", "byte"
+        }
+        
+        # 1. 从类型信息中提取
         if symbol.type_info and not symbol.type_info.is_primitive:
-            dependencies.add(symbol.type_info.name)
+            type_name = symbol.type_info.name
+            if type_name not in primitive_types:
+                dependencies.add(type_name)
+            
+            # 从泛型参数中提取
+            if symbol.type_info.generic_params:
+                for param in symbol.type_info.generic_params:
+                    if param not in primitive_types:
+                        dependencies.add(param)
         
+        # 2. 从返回类型中提取
         if symbol.return_type and not symbol.return_type.is_primitive:
-            dependencies.add(symbol.return_type.name)
+            return_type_name = symbol.return_type.name
+            if return_type_name not in primitive_types:
+                dependencies.add(return_type_name)
+            
+            # 从泛型参数中提取
+            if symbol.return_type.generic_params:
+                for param in symbol.return_type.generic_params:
+                    if param not in primitive_types:
+                        dependencies.add(param)
         
-        # 从参数中提取
+        # 3. 从参数中提取
         for param in symbol.parameters:
             if param.type_info and not param.type_info.is_primitive:
-                dependencies.add(param.type_info.name)
+                param_type_name = param.type_info.name
+                if param_type_name not in primitive_types:
+                    dependencies.add(param_type_name)
+                
+                # 从泛型参数中提取
+                if param.type_info.generic_params:
+                    for gen_param in param.type_info.generic_params:
+                        if gen_param not in primitive_types:
+                            dependencies.add(gen_param)
         
-        # 从继承和实现中提取
-        dependencies.update(symbol.extends)
-        dependencies.update(symbol.implements)
+        # 4. 从继承中提取
+        if symbol.extends:
+            dependencies.update(symbol.extends)
         
-        # 从成员中提取
+        # 5. 从实现中提取
+        if symbol.implements:
+            dependencies.update(symbol.implements)
+        
+        # 6. 从成员中提取
         for member in symbol.members:
             if member.type_info and not member.type_info.is_primitive:
-                dependencies.add(member.type_info.name)
+                member_type_name = member.type_info.name
+                if member_type_name not in primitive_types:
+                    dependencies.add(member_type_name)
+                
+                # 从泛型参数中提取
+                if member.type_info.generic_params:
+                    for param in member.type_info.generic_params:
+                        if param not in primitive_types:
+                            dependencies.add(param)
         
-        # 从 ArkUI 资源引用中提取
+        # 7. 从 ArkUI 资源引用中提取
         if symbol.resource_refs:
             dependencies.update(symbol.resource_refs)
         
+        # 排序并返回
         return sorted(list(dependencies))
     
-    def _extract_tags(self, symbol: Symbol) -> List[str]:
+    def extract_tags(self, symbol: Symbol) -> List[str]:
         """
-        提取语义标签
+        提取语义标签（5 维度）
+        
+        维度 1: 符号属性标签 (async, static, abstract, readonly)
+        维度 2: 可见性标签 (public, private, protected)
+        维度 3: 符号类型标签 (ui-component, entry, preview, function, class)
+        维度 4: 函数纯度标签 (pure-function, has-side-effects)
+        维度 5: ArkUI 特有标签 (lifecycle, event-handler, has-state)
         
         Args:
             symbol: 符号对象
@@ -220,7 +280,58 @@ class ChunkMetadataBuilder:
         """
         tags = []
         
-        # 基于符号属性的标签
+        # 维度 3: 符号类型标签（优先级最高）
+        if symbol.symbol_type == SymbolType.COMPONENT:
+            tags.append("ui-component")
+            
+            # 组件类型标签
+            if symbol.component_type:
+                tags.append(symbol.component_type.lower())
+            
+            # 检查装饰器
+            if "@Entry" in symbol.decorators or any("Entry" in d for d in symbol.decorators):
+                tags.append("entry")
+            if "@Preview" in symbol.decorators or any("Preview" in d for d in symbol.decorators):
+                tags.append("preview")
+        
+        elif symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD]:
+            tags.append("function")
+        
+        elif symbol.symbol_type == SymbolType.CLASS:
+            tags.append("class")
+        
+        elif symbol.symbol_type == SymbolType.INTERFACE:
+            tags.append("interface")
+        
+        elif symbol.symbol_type == SymbolType.ENUM:
+            tags.append("enum")
+        
+        # 维度 5: ArkUI 特有标签
+        if symbol.symbol_type == SymbolType.STYLE_FUNCTION:
+            tags.append("style")
+        
+        if symbol.symbol_type == SymbolType.BUILD_METHOD:
+            tags.append("build")
+        
+        # 生命周期方法标签
+        if symbol.name in self.LIFECYCLE_HOOKS:
+            tags.append("lifecycle")
+        
+        # 事件处理器标签
+        if symbol.event_handlers:
+            tags.append("event-handler")
+        
+        # 状态管理标签
+        has_state = False
+        for member in symbol.members:
+            if member.symbol_type == SymbolType.PROPERTY:
+                if any("State" in d for d in member.decorators):
+                    has_state = True
+                    break
+        if has_state:
+            tags.append("has-state")
+        
+        # 维度 1: 符号属性标签
         if symbol.is_async:
             tags.append("async")
         
@@ -233,7 +344,7 @@ class ChunkMetadataBuilder:
         if symbol.is_readonly:
             tags.append("readonly")
         
-        # 基于可见性的标签
+        # 维度 2: 可见性标签
         if symbol.visibility == Visibility.PUBLIC:
             tags.append("public")
         elif symbol.visibility == Visibility.PRIVATE:
@@ -241,37 +352,12 @@ class ChunkMetadataBuilder:
         elif symbol.visibility == Visibility.PROTECTED:
             tags.append("protected")
         
-        # 基于符号类型的标签
-        if symbol.symbol_type == SymbolType.COMPONENT:
-            tags.append("ui-component")
-            
-            # 组件类型标签
-            if symbol.component_type:
-                tags.append(symbol.component_type.lower())
-        
-        elif symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD]:
-            tags.append("function")
-            
-            # 判断是否为纯函数
-            if not self._has_side_effects(symbol):
+        # 维度 4: 函数纯度标签
+        if symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD]:
+            if self._has_side_effects(symbol):
+                tags.append("has-side-effects")
+            else:
                 tags.append("pure-function")
-        
-        elif symbol.symbol_type == SymbolType.CLASS:
-            tags.append("class")
-        
-        elif symbol.symbol_type == SymbolType.INTERFACE:
-            tags.append("interface")
-        
-        # ArkUI 特有标签
-        if symbol.symbol_type == SymbolType.STYLE_FUNCTION:
-            tags.append("style")
-        
-        if symbol.symbol_type == SymbolType.BUILD_METHOD:
-            tags.append("build")
-        
-        # 生命周期方法标签
-        if symbol.name in self.LIFECYCLE_HOOKS:
-            tags.append("lifecycle")
         
         return tags
     
