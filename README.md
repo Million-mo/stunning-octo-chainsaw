@@ -10,12 +10,16 @@
 
 1. **代码 Chunk 服务** ⭐ - 基于 AST 的智能代码分割
    - **语义完整的代码块生成**: 自动提取函数、类、组件、接口、枚举等完整代码块
+   - **动态上下文控制** 🆕: 根据代码块大小智能调整上下文增强策略
+     - 小型代码块 (<100 tokens): 丰富的元数据头 (L1-L3)
+     - 中型代码块 (100-500 tokens): 平衡的元数据头 (L1-L2)
+     - 大型代码块 (>500 tokens): 精简的元数据头 (L1)
    - **上下文增强**: 添加文件路径、类名、导入依赖等元数据头，优化 embedding 效果
-   - **ArkUI 组件特化**: 识别 @Component、@State、生命周期方法等 ArkUI 特性
+   - **ArkUI 组件特化**: 识别 @Component、@State、生命周期方法等 ArkUI 特性，自动添加 L4 层元数据
    - **依赖关系追溯**: 保留 imports、extends、implements 等依赖信息
    - **RAG 系统集成就绪**: 提供可直接用于向量化的增强文本
-   - **完整测试覆盖**: 45 个测试全部通过，生产就绪
-   - 详见: [Chunk API 文档](docs/CHUNK_API.md) | [Chunk README](docs/CHUNK_README.md) | [实现总结](docs/CHUNK_IMPLEMENTATION_SUMMARY.md)
+   - **完整测试覆盖**: 45+ 个测试全部通过，生产就绪
+   - 详见: [Chunk API 文档](docs/CHUNK_API.md) | [Chunk README](docs/CHUNK_README.md) | [动态上下文控制](docs/DYNAMIC_CONTEXT_CONTROL.md)
 
 2. **符号提取** - 从ArkTS代码中提取以下符号类型：
    - 类 (Class)
@@ -111,9 +115,11 @@
 │   ├── ARKUI_SUPPORT_SUMMARY.md   # ArkUI 功能完整文档 ⭐
 │   ├── ARKUI_QUICK_REFERENCE.md   # ArkUI 快速参考 ⭐
 │   ├── AST_ANALYSIS_SUMMARY.md    # AST 节点结构分析
-│   ├── CHUNK_API.md               # Chunk API 文档 ⭐ NEW
-│   ├── CHUNK_README.md            # Chunk 功能说明 ⭐ NEW
-│   ├── CHUNK_IMPLEMENTATION_SUMMARY.md  # Chunk 实现总结 ⭐ NEW
+│   ├── CHUNK_API.md               # Chunk API 文档 ⭐
+│   ├── CHUNK_README.md            # Chunk 功能说明 ⭐
+│   ├── CHUNK_IMPLEMENTATION_SUMMARY.md  # Chunk 实现总结 ⭐
+│   ├── DYNAMIC_CONTEXT_CONTROL.md # 动态上下文控制设计 🆕
+│   ├── DYNAMIC_CONTEXT_IMPLEMENTATION.md  # 动态上下文实现 🆕
 │   └── archives/                  # 历史文档归档
 │       ├── BUGFIX_SUMMARY.md
 │       ├── EXTRACTOR_FIX_REPORT.md
@@ -127,7 +133,9 @@
 │
 ├── examples/                      # 示例代码
 │   ├── basic_usage.py             # 基本使用示例
-│   └── chunk_example.py           # Chunk 服务示例 ⭐ NEW
+│   ├── chunk_example.py           # Chunk 服务示例 ⭐
+│   ├── complete_example.py        # 完整使用示例
+│   └── dynamic_context_demo.py    # 动态上下文演示 🆕
 │
 ├── README.md                      # 项目主文档
 ├── QUICKSTART.md                  # 快速开始指南
@@ -151,7 +159,8 @@
   - 功能概述: [`docs/CHUNK_README.md`](docs/CHUNK_README.md)
   - API 参考: [`docs/CHUNK_API.md`](docs/CHUNK_API.md)
   - 实现细节: [`docs/CHUNK_IMPLEMENTATION_SUMMARY.md`](docs/CHUNK_IMPLEMENTATION_SUMMARY.md)
-  - 使用示例: [`examples/chunk_example.py`](examples/chunk_example.py)
+  - 动态上下文控制 🆕: [`docs/DYNAMIC_CONTEXT_CONTROL.md`](docs/DYNAMIC_CONTEXT_CONTROL.md)
+  - 使用示例: [`examples/chunk_example.py`](examples/chunk_example.py) | [`examples/dynamic_context_demo.py`](examples/dynamic_context_demo.py)
 - **了解 ArkUI 支持**: 查看 [`docs/ARKUI_QUICK_REFERENCE.md`](docs/ARKUI_QUICK_REFERENCE.md)
 - **运行测试**: 查看 [`tests/README.md`](tests/README.md)
 - **使用工具**: 查看 [`scripts/README.md`](scripts/README.md)

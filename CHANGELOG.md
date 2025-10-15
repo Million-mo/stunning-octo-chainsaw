@@ -4,6 +4,55 @@
 
 ## [未发布]
 
+### 新增功能
+- ✨ **动态上下文控制** 🆕: 根据代码块大小智能调整上下文增强策略
+  - 小型代码块 (<100 tokens): 添加丰富的 L1-L3 层元数据头
+  - 中型代码块 (100-500 tokens): 添加平衡的 L1-L2 层元数据头
+  - 大型代码块 (>500 tokens): 仅添加精简的 L1 层元数据头
+  - ArkUI 组件自动添加 L4 层特化元数据（组件类型、状态变量、生命周期等）
+  - 优化 embedding 效果，提升 RAG 系统召回准确性
+
+### 文档更新
+- 📝 新增 `docs/DYNAMIC_CONTEXT_CONTROL.md` - 动态上下文控制设计文档
+- 📝 新增 `docs/DYNAMIC_CONTEXT_IMPLEMENTATION.md` - 动态上下文控制实现文档
+- 📝 新增 `examples/dynamic_context_demo.py` - 动态上下文控制演示示例
+- 📝 更新 README.md，添加动态上下文控制功能说明
+- 📝 更新 QUICKSTART.md，添加动态上下文使用指南和示例
+
+### 测试
+- ✅ 新增动态上下文控制集成测试
+- ✅ 总测试数量提升至 64+ 个，100% 通过率
+
+## [0.2.0] - 2025-10-14
+
+### 新增功能 - Chunk 服务完整实现
+
+#### 核心模块（6个）
+- ✨ **ChunkExtractor**: 从符号表提取语义完整的代码块
+- ✨ **ContextEnricher**: 为代码块添加上下文元数据头
+- ✨ **ChunkMetadataBuilder**: 构建完整的 Chunk 元数据
+- ✨ **ChunkService**: 提供统一的 Chunk 服务接口
+- ✨ **ChunkRepository**: Chunk 数据库存储和查询
+- ✨ **ChunkModels**: 完整的 Chunk 数据模型定义
+
+#### 功能特性
+- ✅ 语义完整的代码块生成（函数、类、组件、接口、枚举等）
+- ✅ 上下文增强（文件路径、类名、导入依赖等元数据头）
+- ✅ ArkUI 组件特化（识别装饰器、状态变量、生命周期方法）
+- ✅ 依赖关系追溯（imports、extends、implements）
+- ✅ RAG 系统集成就绪（提供可直接用于向量化的增强文本）
+
+#### 测试套件
+- ✅ 26 个单元测试全部通过
+- ✅ 13 个集成测试全部通过
+- ✅ 6 个验证测试全部通过
+
+#### 文档
+- 📝 `docs/CHUNK_README.md` - Chunk 功能说明
+- 📝 `docs/CHUNK_API.md` - Chunk API 完整文档
+- 📝 `docs/CHUNK_IMPLEMENTATION_SUMMARY.md` - Chunk 实现总结
+- 📝 `examples/chunk_example.py` - 6 个完整使用示例
+
 ### 修复
 - 🐛 **修复AST遍历问题**：添加了对 'source_file' 和 'program' 根节点类型的处理方法
   - 添加了 `visit_source_file()` 方法处理 ArkTS 文件的根节点
