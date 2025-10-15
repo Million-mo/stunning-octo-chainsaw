@@ -272,30 +272,3 @@ class ChunkService:
         
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(chunks_data, f, ensure_ascii=False, indent=2)
-    
-    def get_embedable_texts(self, file_path: str) -> List[Dict[str, str]]:
-        """
-        获取可用于 embedding 的文本列表
-        
-        Args:
-            file_path: 文件路径
-            
-        Returns:
-            包含 chunk_id 和增强文本的字典列表
-        """
-        chunks = self.get_chunks_by_file(file_path)
-        
-        embedable_texts = []
-        for chunk in chunks:
-            embedable_texts.append({
-                "chunk_id": chunk.chunk_id,
-                "text": chunk.get_enriched_source(),
-                "metadata": {
-                    "type": chunk.type.value,
-                    "name": chunk.name,
-                    "path": chunk.path,
-                    "context": chunk.context
-                }
-            })
-        
-        return embedable_texts

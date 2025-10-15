@@ -336,10 +336,22 @@ interface UserInfo {
     
     def test_embedable_texts(self):
         """测试获取可嵌入文本"""
-        self.chunk_service.generate_chunks(self.test_file, save_to_db=True)
+        chunks = self.chunk_service.generate_chunks(self.test_file, save_to_db=True)
         
-        # 获取可嵌入文本
-        embedable = self.chunk_service.get_embedable_texts(self.test_file)
+        # 将 chunks 转换为可嵌入格式
+        embedable = [
+            {
+                "chunk_id": chunk.chunk_id,
+                "text": chunk.get_enriched_source(),
+                "metadata": {
+                    "type": chunk.type.value,
+                    "name": chunk.name,
+                    "path": chunk.path,
+                    "context": chunk.context
+                }
+            }
+            for chunk in chunks
+        ]
         
         self.assertGreater(len(embedable), 0, "应该有可嵌入文本")
         

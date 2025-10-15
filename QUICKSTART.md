@@ -186,20 +186,6 @@ chunk_service = ChunkService(symbol_service, "chunks.db")
 # 3. 为文件生成 Chunk
 chunks = chunk_service.generate_chunks("example.ets")
 print(f"生成了 {len(chunks)} 个 Chunk")
-
-# 4. 查看 Chunk 信息
-for chunk in chunks[:3]:  # 显示前 3 个
-    print(f"\n{chunk.name} ({chunk.type.value})")
-    print(f"  - Context: {chunk.context}")
-    print(f"  - Imports: {', '.join(chunk.imports) if chunk.imports else 'None'}")
-
-# 5. 获取可嵌入文本（用于 RAG）
-embedable_texts = chunk_service.get_embedable_texts("example.ets")
-for item in embedable_texts:
-    # 可以直接用于 embedding 模型
-    text = item['text']  # 包含元数据头 + 原始代码
-    chunk_id = item['chunk_id']  # 唯一标识符
-    metadata = item['metadata']  # 完整元数据
 ```
 
 ### 示例 5：Chunk 查询和搜索
@@ -247,17 +233,28 @@ chunk_service = ChunkService(symbol_service, "chunks.db")
 from pathlib import Path
 
 project_files = list(Path("./src").rglob("*.ets"))
+all_chunks = []
 for file_path in project_files:
     chunks = chunk_service.generate_chunks(str(file_path))
+    all_chunks.extend(chunks)
     print(f"处理了 {file_path}: {len(chunks)} 个 Chunk")
 
-# 3. 获取所有可嵌入文本
-all_embedable = []
-for file_path in project_files:
-    embedable = chunk_service.get_embedable_texts(str(file_path))
-    all_embedable.extend(embedable)
+# 3. 准备可嵌入文本（直接使用已生成的 chunks）
+all_embedable = [
+    {
+        "chunk_id": chunk.chunk_id,
+        "text": chunk.get_enriched_source(),
+        "metadata": {
+            "type": chunk.type.value,
+            "name": chunk.name,
+            "path": chunk.path,
+            "context": chunk.context
+        }
+    }
+    for chunk in all_chunks
+]
 
-print(f"\n总计 {len(all_embedable)} 个可嵌入文本")
+print(f"\n总计 {len(all_chunks)} 个 Chunk, {len(all_embedable)} 个可嵌入文本")
 
 # 4. 与 embedding 模型集成（示意）
 # from sentence_transformers import SentenceTransformer
@@ -338,7 +335,7 @@ export class DataService {
 #### ArkUI 组件示例 (自动添加 L4 层)
 
 **小型组件** (包含 L1-L4):
-```
+
 ```
 # file: src/views/Login.ets
 # component: LoginView

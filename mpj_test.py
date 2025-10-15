@@ -40,28 +40,24 @@ import tree_sitter_arkts as ts_arkts
 from arkts_processor.symbol_service.service import SymbolService
 from arkts_processor.chunk_service.service import ChunkService
 
-# 1. 初始化符号服务
-symbol_service = SymbolService("symbols.db")
+# 1. 初始化服务（使用内存数据库，测试时不生成文件）
 parser = tree_sitter.Parser(tree_sitter.Language(ts_arkts.language()))
+symbol_service = SymbolService(":memory:")  # 使用内存数据库
 symbol_service.set_parser(parser)
+chunk_service = ChunkService(symbol_service, ":memory:")  # 使用内存数据库
 
-# 2. 初始化 Chunk 服务
-chunk_service = ChunkService(symbol_service, "chunks.db")
+# 2. 处理项目中的所有 .ets 文件
+from pathlib import Path
 
-# 3. 为文件生成 Chunk
-chunks = chunk_service.generate_chunks("/Users/million_mo/projects/stunning-octo-chainsaw/tests/test_arkui_features.ets")
-print(f"生成了 {len(chunks)} 个 Chunk")
+# project_files = list(Path("/Users/million_mo/projects/hmos_projects/hmosworld/").rglob("*.ets"))
+# all_chunks = []
+# for file_path in project_files:
+#     chunks = chunk_service.generate_chunks(str(file_path))
+#     all_chunks.extend(chunks)
+#     print(f"处理了 {file_path}: {len(chunks)} 个 Chunk")
 
-# 4. 查看 Chunk 信息
-for chunk in chunks[:3]:  # 显示前 3 个
-    print(f"\n{chunk.name} ({chunk.type.value})")
-    print(f"  - Context: {chunk.context}")
-    print(f"  - Imports: {', '.join(chunk.imports) if chunk.imports else 'None'}")
+# print(f"\n总计 {len(all_chunks)} 个可嵌入文本")
 
-# 5. 获取可嵌入文本（用于 RAG）
-embedable_texts = chunk_service.get_embedable_texts("example.ets")
-for item in embedable_texts:
-    # 可以直接用于 embedding 模型
-    text = item['text']  # 包含元数据头 + 原始代码
-    chunk_id = item['chunk_id']  # 唯一标识符
-    metadata = item['metadata']  # 完整元数据
+file_path = "/Users/million_mo/projects/hmos_projects/hmosworld/HMOSWorld/Application/features/login/src/main/ets/pages/LoginPage.ets"
+chunks = chunk_service.generate_chunks(file_path=str(file_path))
+print(f"处理了 {file_path}: {len(chunks)} 个 Chunk")

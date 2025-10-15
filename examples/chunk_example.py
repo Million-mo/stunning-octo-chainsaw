@@ -133,8 +133,23 @@ def example_4_enriched_source():
     
     test_file = str(project_root / "example.ets")
     
-    # 获取可嵌入的文本
-    embedable_texts = chunk_service.get_embedable_texts(test_file)
+    # 生成 chunks 并直接准备可嵌入文本
+    chunks = chunk_service.generate_chunks(test_file)
+    
+    # 将 chunks 转换为可嵌入格式
+    embedable_texts = [
+        {
+            "chunk_id": chunk.chunk_id,
+            "text": chunk.get_enriched_source(),
+            "metadata": {
+                "type": chunk.type.value,
+                "name": chunk.name,
+                "path": chunk.path,
+                "context": chunk.context
+            }
+        }
+        for chunk in chunks
+    ]
     
     if embedable_texts:
         print(f"\n获取到 {len(embedable_texts)} 个可嵌入文本")

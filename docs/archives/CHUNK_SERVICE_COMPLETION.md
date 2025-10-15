@@ -97,7 +97,6 @@
 - `refresh_file()` - 增量更新
 - `get_statistics()` - 统计信息
 - `export_chunks_to_json()` - JSON 导出
-- `get_embedable_texts()` - 获取可嵌入文本
 
 ### 2. 测试套件
 
@@ -231,7 +230,7 @@
 ### ✅ 嵌入就绪
 
 - 生成包含上下文头的增强文本
-- 提供 `get_embedable_texts()` 接口
+- 直接使用 `chunk.get_enriched_source()` 获取
 - 格式化元数据头（便于 embedding 模型理解）
 
 ## 上下文增强示例
@@ -297,8 +296,22 @@ chunk_service = ChunkService(symbol_service, "chunks.db")
 # 生成 Chunk
 chunks = chunk_service.generate_chunks("example.ets")
 
-# 获取可嵌入文本
-embedable = chunk_service.get_embedable_texts("example.ets")
+# 准备可嵌入文本
+embedable = [
+    {
+        "chunk_id": chunk.chunk_id,
+        "text": chunk.get_enriched_source(),
+        "metadata": {
+            "type": chunk.type.value,
+            "name": chunk.name,
+            "path": chunk.path,
+            "context": chunk.context
+        }
+    }
+    for chunk in chunks
+]
+
+# 使用 embedding 模型
 for item in embedable:
     vector = embedding_model.encode(item['text'])
     vector_db.insert(item['chunk_id'], vector)
