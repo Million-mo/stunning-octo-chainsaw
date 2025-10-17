@@ -71,6 +71,10 @@ class SymbolExtractor(ASTVisitor):
         self.traverser = ASTTraverser(source_code)
         self.symbols: List[Symbol] = []
         self.current_scope_id: Optional[int] = None
+        
+        # Export 状态跟踪
+        self._current_is_exported = False
+        self._current_is_export_default = False
     
     # ========== 辅助方法 ==========
     
@@ -139,6 +143,46 @@ class SymbolExtractor(ASTVisitor):
         for child in node.children:
             self.visit(child)
     
+    # ========== Export 声明处理 ==========
+    
+    def visit_export_declaration(self, node: Node) -> None:
+        """
+        访问 export 声明
+        
+        export_declaration 是包装节点，结构如下：
+        export_declaration
+          ├── export (关键字)
+          ├── default (可选，用于 export default)
+          └── 实际声明（class_declaration、function_declaration 等）
+        
+        Args:
+            node: export_declaration 节点
+        """
+        # 检查是否为 export default
+        is_export_default = self._has_child_type(node, "default")
+        
+        # 遍历子节点，找到实际的声明节点
+        for child in node.children:
+            # 跳过 export 和 default 关键字
+            if child.type in ["export", "default"]:
+                continue
+            
+            # 处理实际的声明节点
+            if child.is_named:
+                # 保存 export 状态
+                original_export_state = getattr(self, '_current_is_exported', False)
+                original_export_default_state = getattr(self, '_current_is_export_default', False)
+                
+                self._current_is_exported = True
+                self._current_is_export_default = is_export_default
+                
+                # 访问实际声明
+                self.visit(child)
+                
+                # 恢复状态
+                self._current_is_exported = original_export_state
+                self._current_is_export_default = original_export_default_state
+    
     # ========== ArkUI 组件声明 ==========
     
     def visit_component_declaration(self, node: Node) -> None:
@@ -166,6 +210,10 @@ class SymbolExtractor(ASTVisitor):
             range=self._create_range(node),
             scope_id=self.current_scope_id
         )
+        
+        # 标记 export 状态
+        symbol.is_exported = getattr(self, '_current_is_exported', False)
+        symbol.is_export_default = getattr(self, '_current_is_export_default', False)
         
         # 提取 ArkUI 装饰器（@Entry, @Component, @Preview 等）
         self._extract_arkui_decorators(node, symbol)
@@ -215,6 +263,10 @@ class SymbolExtractor(ASTVisitor):
             scope_id=self.current_scope_id
         )
         
+        # 标记 export 状态
+        symbol.is_exported = getattr(self, '_current_is_exported', False)
+        symbol.is_export_default = getattr(self, '_current_is_export_default', False)
+        
         # 提取修饰符（public/private/protected/static/abstract）
         self._extract_modifiers(node, symbol)
         
@@ -260,6 +312,10 @@ class SymbolExtractor(ASTVisitor):
             range=self._create_range(node),
             scope_id=self.current_scope_id
         )
+        
+        # 标记 export 状态
+        symbol.is_exported = getattr(self, '_current_is_exported', False)
+        symbol.is_export_default = getattr(self, '_current_is_export_default', False)
         
         # 提取继承信息（接口可以 extends 其他接口）
         self._extract_interface_heritage(node, symbol)
@@ -443,6 +499,10 @@ class SymbolExtractor(ASTVisitor):
             scope_id=self.current_scope_id
         )
         
+        # 标记 export 状态
+        symbol.is_exported = getattr(self, '_current_is_exported', False)
+        symbol.is_export_default = getattr(self, '_current_is_export_default', False)
+        
         # 检查是否为async函数
         if self._has_child_type(node, "async"):
             symbol.is_async = True
@@ -489,6 +549,10 @@ class SymbolExtractor(ASTVisitor):
                     scope_id=self.current_scope_id
                 )
                 
+                # 标记 export 状态
+                symbol.is_exported = getattr(self, '_current_is_exported', False)
+                symbol.is_export_default = getattr(self, '_current_is_export_default', False)
+                
                 # 提取类型：查找 type_annotation 子节点
                 type_annotation = self._get_child_by_type(child, "type_annotation")
                 if type_annotation:
@@ -517,6 +581,10 @@ class SymbolExtractor(ASTVisitor):
             range=self._create_range(node),
             scope_id=self.current_scope_id
         )
+        
+        # 标记 export 状态
+        symbol.is_exported = getattr(self, '_current_is_exported', False)
+        symbol.is_export_default = getattr(self, '_current_is_export_default', False)
         
         # 提取文档注释
         symbol.documentation = self._extract_documentation(node)
@@ -561,6 +629,10 @@ class SymbolExtractor(ASTVisitor):
             range=self._create_range(node),
             scope_id=self.current_scope_id
         )
+        
+        # 标记 export 状态
+        symbol.is_exported = getattr(self, '_current_is_exported', False)
+        symbol.is_export_default = getattr(self, '_current_is_export_default', False)
         
         # 提取类型定义：查找 "=" 后的 type_annotation 子节点
         # 需要找到 "=" 之后的 type_annotation

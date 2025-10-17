@@ -58,6 +58,7 @@ from pathlib import Path
 
 # print(f"\n总计 {len(all_chunks)} 个可嵌入文本")
 
-file_path = "/Users/million_mo/projects/hmos_projects/hmosworld/HMOSWorld/Application/features/login/src/main/ets/pages/LoginPage.ets"
+# file_path = "/Users/million_mo/projects/hmos_projects/hmosworld/HMOSWorld/Application/features/login/src/main/ets/pages/LoginPage.ets"
+file_path = "example.ets"
 chunks = chunk_service.generate_chunks(file_path=str(file_path))
 print(f"处理了 {file_path}: {len(chunks)} 个 Chunk")

@@ -106,6 +106,10 @@ class SymbolModel(Base):
     is_readonly = Column(Boolean, default=False)
     is_async = Column(Boolean, default=False)
     
+    # Export 信息
+    is_exported = Column(Boolean, default=False)  # 是否通过 export 导出
+    is_export_default = Column(Boolean, default=False)  # 是否为 export default
+    
     # 继承和实现
     extends = Column(JSON, default=list)  # List[str]
     implements = Column(JSON, default=list)  # List[str]

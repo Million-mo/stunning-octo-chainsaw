@@ -134,6 +134,10 @@ class Symbol:
     is_readonly: bool = False
     is_async: bool = False
     
+    # Export 信息
+    is_exported: bool = False  # 是否通过 export 导出
+    is_export_default: bool = False  # 是否为 export default
+    
     # 参数和成员
     parameters: List['Symbol'] = field(default_factory=list)
     members: List['Symbol'] = field(default_factory=list)

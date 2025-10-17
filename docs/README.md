@@ -60,6 +60,20 @@ Chunk 服务实现总结：
 - 测试覆盖和验证
 - 使用示例和集成指南
 
+### [EXPORT_SUPPORT.md](./EXPORT_SUPPORT.md) 🆕
+Export 关键字支持完整文档：
+- 支持的 export 类型（class、interface、function 等）
+- 符号导出标记（is_exported、is_export_default）
+- 使用示例和 API 参考
+- 与 ChunkService 的集成
+
+### [PARSER_LIMITATIONS.md](./PARSER_LIMITATIONS.md) 🆕
+ArkTS 解析器限制说明：
+- tree-sitter-arkts-open 的已知限制
+- export enum 不支持的原因和替代方案
+- 向上游报告问题的指南
+- 最佳实践建议
+
 ## 📦 历史归档
 
 [archives/](./archives/) 目录包含了开发过程中的历史文档：
@@ -71,6 +85,7 @@ Chunk 服务实现总结：
 
 ### 实现和更新记录
 - `IMPLEMENTATION_SUMMARY.md` - 早期实现详细总结
+- `EXPORT_IMPLEMENTATION_SUMMARY.md` - Export 功能实现总结 (2025-10-16)
 - `SYMBOL_EXTRACTOR_UPDATE.md` - 符号提取器更新说明
 - `UPDATE_NOTICE.md` - 功能更新通知
 

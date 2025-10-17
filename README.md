@@ -162,6 +162,7 @@
   - 动态上下文控制 🆕: [`docs/DYNAMIC_CONTEXT_CONTROL.md`](docs/DYNAMIC_CONTEXT_CONTROL.md)
   - 使用示例: [`examples/chunk_example.py`](examples/chunk_example.py) | [`examples/dynamic_context_demo.py`](examples/dynamic_context_demo.py)
 - **了解 ArkUI 支持**: 查看 [`docs/ARKUI_QUICK_REFERENCE.md`](docs/ARKUI_QUICK_REFERENCE.md)
+- **了解 Export 支持** 🆕: 查看 [`docs/EXPORT_SUPPORT.md`](docs/EXPORT_SUPPORT.md) | [解析器限制](docs/PARSER_LIMITATIONS.md)
 - **运行测试**: 查看 [`tests/README.md`](tests/README.md)
 - **使用工具**: 查看 [`scripts/README.md`](scripts/README.md)
 

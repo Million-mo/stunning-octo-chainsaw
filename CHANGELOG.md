@@ -5,6 +5,15 @@
 ## [未发布]
 
 ### 新增功能
+- ✨ **Export 关键字支持** 🆕: 识别并标记通过 `export` 导出的符号
+  - 支持 `export class`、`export interface`、`export function` 等
+  - 支持 `export const/let/var` 变量导出
+  - 支持 `export type` 类型别名导出
+  - 支持 `export default` 默认导出
+  - 新增 `is_exported` 和 `is_export_default` 字段到 Symbol 模型
+  - 与 ChunkService 完全集成，导出信息自动传递
+  - ⚠️ **限制**: `export enum` 由于 tree-sitter-arkts-open 解析器限制不支持
+
 - ✨ **动态上下文控制** 🆕: 根据代码块大小智能调整上下文增强策略
   - 小型代码块 (<100 tokens): 添加丰富的 L1-L3 层元数据头
   - 中型代码块 (100-500 tokens): 添加平衡的 L1-L2 层元数据头
@@ -12,16 +21,29 @@
   - ArkUI 组件自动添加 L4 层特化元数据（组件类型、状态变量、生命周期等）
   - 优化 embedding 效果，提升 RAG 系统召回准确性
 
+### 数据库 Schema 更新
+- 💾 在 SymbolModel 中新增 `is_exported` 和 `is_export_default` 字段
+- 💾 更新 Repository 保存和读取逻辑以支持新字段
+
 ### 文档更新
+- 📝 新增 `docs/EXPORT_SUPPORT.md` - Export 功能完整文档
+- 📝 新增 `docs/PARSER_LIMITATIONS.md` - ArkTS 解析器限制说明
 - 📝 新增 `docs/DYNAMIC_CONTEXT_CONTROL.md` - 动态上下文控制设计文档
 - 📝 新增 `docs/DYNAMIC_CONTEXT_IMPLEMENTATION.md` - 动态上下文控制实现文档
 - 📝 新增 `examples/dynamic_context_demo.py` - 动态上下文控制演示示例
-- 📝 更新 README.md，添加动态上下文控制功能说明
+- 📝 更新 README.md，添加 Export 和动态上下文功能说明
 - 📝 更新 QUICKSTART.md，添加动态上下文使用指南和示例
+- 📝 归档 `docs/archives/EXPORT_IMPLEMENTATION_SUMMARY.md` - Export 实现细节
 
 ### 测试
+- ✅ 新增 Export 功能测试（除 `export enum` 外）
 - ✅ 新增动态上下文控制集成测试
 - ✅ 总测试数量提升至 64+ 个，100% 通过率
+
+### 清理与优化
+- 🧹 移除临时测试文件（debug_export_enum.py、inspect_export.py 等）
+- 🧹 整理文档结构，将 Export 相关文档移至 docs/ 目录
+- 🧹 删除重复文档，保持文档结构清晰
 
 ## [0.2.0] - 2025-10-14
 

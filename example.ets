@@ -21,3 +21,8 @@ struct FancyUse {
     .width('100%')
   }
 }
+
+export enum LoginTrigger {
+  // Login
+  LOGIN = 'third-login'
+}
