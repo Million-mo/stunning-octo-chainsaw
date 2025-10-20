@@ -145,18 +145,18 @@ class SymbolExtractor(ASTVisitor):
     
     # ========== Export 声明处理 ==========
     
-    def visit_export_declaration(self, node: Node) -> None:
+    def visit_export_statement(self, node: Node) -> None:
         """
-        访问 export 声明
+        访问 export 语句（tree-sitter-arkts 0.1.8 使用 export_statement）
         
-        export_declaration 是包装节点，结构如下：
-        export_declaration
+        export_statement 是包装节点，结构如下：
+        export_statement
           ├── export (关键字)
           ├── default (可选，用于 export default)
-          └── 实际声明（class_declaration、function_declaration 等）
+          └── 实际声明（class_declaration、lexical_declaration 等）
         
         Args:
-            node: export_declaration 节点
+            node: export_statement 节点
         """
         # 检查是否为 export default
         is_export_default = self._has_child_type(node, "default")
@@ -182,6 +182,18 @@ class SymbolExtractor(ASTVisitor):
                 # 恢复状态
                 self._current_is_exported = original_export_state
                 self._current_is_export_default = original_export_default_state
+    
+    def visit_export_declaration(self, node: Node) -> None:
+        """
+        访问 export 声明（旧节点类型，为兼容性保留）
+        
+        某些版本的解析器可能使用 export_declaration 而非 export_statement。
+        直接转发到 visit_export_statement 处理。
+        
+        Args:
+            node: export_declaration 节点
+        """
+        self.visit_export_statement(node)
     
     # ========== ArkUI 组件声明 ==========
     
@@ -522,8 +534,12 @@ class SymbolExtractor(ASTVisitor):
     
     # ========== 变量声明 ==========
     
+    def visit_variable_statement(self, node: Node) -> None:
+        """访问变量语句（tree-sitter-arkts 0.1.8 使用 variable_statement）"""
+        self._extract_variable_declarators(node)
+    
     def visit_variable_declaration(self, node: Node) -> None:
-        """访问变量声明"""
+        """访问变量声明（旧节点类型，为兼容性保留）"""
         self._extract_variable_declarators(node)
     
     def visit_lexical_declaration(self, node: Node) -> None:
@@ -568,11 +584,11 @@ class SymbolExtractor(ASTVisitor):
     
     def visit_enum_declaration(self, node: Node) -> None:
         """访问枚举声明"""
-        name_node = NodeHelper.get_field_by_name(node, "name")
-        if not name_node:
+        # 获取枚举名：identifier 是直接子节点
+        name = self._get_identifier_name(node)
+        if not name:
             return
             
-        name = self.traverser.get_node_text(name_node)
         symbol = Symbol(
             id=None,
             name=name,
@@ -591,26 +607,23 @@ class SymbolExtractor(ASTVisitor):
         
         self.symbols.append(symbol)
         
-        # 提取枚举成员
-        body = NodeHelper.get_field_by_name(node, "body")
-        if body:
-            for child in body.children:
-                if child.type == "enum_assignment" or child.type == "property_identifier":
-                    member_name_node = NodeHelper.get_field_by_name(child, "name")
-                    if not member_name_node:
-                        member_name_node = child
-                    
-                    member_name = self.traverser.get_node_text(member_name_node)
-                    member_symbol = Symbol(
-                        id=None,
-                        name=member_name,
-                        symbol_type=SymbolType.ENUM_MEMBER,
-                        file_path=self.file_path,
-                        range=self._create_range(child),
-                        scope_id=self.current_scope_id
-                    )
-                    
-                    self.symbols.append(member_symbol)
+        # 提取枚举成员：查找 enum_body 子节点
+        enum_body = self._get_child_by_type(node, "enum_body")
+        if enum_body:
+            for child in enum_body.children:
+                if child.type == "enum_member":
+                    # 获取成员名
+                    member_name = self._get_identifier_name(child)
+                    if member_name:
+                        member_symbol = Symbol(
+                            id=None,
+                            name=member_name,
+                            symbol_type=SymbolType.ENUM_MEMBER,
+                            file_path=self.file_path,
+                            range=self._create_range(child),
+                            scope_id=self.current_scope_id
+                        )
+                        self.symbols.append(member_symbol)
     
     # ========== 类型别名 ==========
     
