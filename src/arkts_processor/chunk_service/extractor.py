@@ -5,7 +5,7 @@ Chunk 提取器
 """
 
 from typing import List, Optional, Dict, Any
-from ..models import Symbol, SymbolType, Scope
+from ..models import Symbol, SymbolType, Scope, ScopeType
 from ..chunk_models import (
     CodeChunk, ChunkType, PositionRange, 
     ChunkMetadata, Parameter, TypeInfo
@@ -29,17 +29,19 @@ class ChunkExtractor:
         SymbolType.NAMESPACE: ChunkType.MODULE,
     }
     
-    def __init__(self, file_path: str, source_code: bytes):
+    def __init__(self, file_path: str, source_code: bytes, project_root: Optional[str] = None):
         """
         初始化提取器
         
         Args:
-            file_path: 文件路径
+            file_path: 文件路径（绝对路径）
             source_code: 源代码字节数组
+            project_root: 项目根目录（用于生成相对路径）
         """
         self.file_path = file_path
         self.source_code = source_code
         self.source_lines = source_code.decode('utf-8').split('\n')
+        self.project_root = project_root
     
     def extract_chunks(self, symbols: List[Symbol], scopes: List[Scope]) -> List[CodeChunk]:
         """
@@ -137,8 +139,14 @@ class ChunkExtractor:
         """
         生成 Chunk 的唯一标识符
         
-        格式：{文件路径}#{符号路径}
-        例如：src/utils/score.ts#ScoreUtils.calculateUserScore
+        格式：{relative_path}#{qualified_name}@L{start_line}
+        例如：components/CustomTabBar.ets#CustomTabBar.build@L15
+        
+        优点：
+        - 稳定：不依赖数据库 ID
+        - 简洁：去除类型后缀，仅保留名称
+        - 唯一：行号确保同名符号可区分
+        - 可追溯：直接定位源码位置
         
         Args:
             symbol: 符号对象
@@ -147,44 +155,70 @@ class ChunkExtractor:
         Returns:
             chunk_id 字符串
         """
-        # 构造符号路径
-        symbol_path = self._build_symbol_path(symbol, scope_map)
+        # 获取相对路径（如果有 project_root）
+        if self.project_root:
+            try:
+                from pathlib import Path
+                rel_path = Path(symbol.file_path).relative_to(Path(self.project_root))
+                file_part = str(rel_path)
+            except (ValueError, AttributeError):
+                # 如果无法计算相对路径，使用完整路径
+                file_part = symbol.file_path
+        else:
+            file_part = symbol.file_path
         
-        # 返回完整 chunk_id
-        return f"{symbol.file_path}#{symbol_path}"
+        # 构造简洁的限定名（仅名称，不包含类型）
+        qualified_name = self._build_qualified_name(symbol, scope_map)
+        
+        # 使用起始行号作为唯一标识
+        start_line = symbol.range.start.line + 1  # 转换为 1-based
+        
+        return f"{file_part}#{qualified_name}@L{start_line}"
     
-    def _build_symbol_path(self, symbol: Symbol, scope_map: Dict[int, Scope]) -> str:
+    def _build_qualified_name(self, symbol: Symbol, scope_map: Dict[int, Scope]) -> str:
         """
-        构造符号的层级路径
+        构造符号的限定名（简洁版，仅包含名称）
         
         Args:
             symbol: 符号对象
             scope_map: 作用域ID到作用域对象的映射
             
         Returns:
-            符号路径字符串
+            限定名字符串（如：CustomTabBar.build）
         """
         path_parts = [symbol.name]
         
         # 向上遍历作用域，构造路径
         current_scope_id = symbol.scope_id
+        visited_scopes = set()
+        
         while current_scope_id is not None:
+            if current_scope_id in visited_scopes:
+                break
+            visited_scopes.add(current_scope_id)
+            
             scope = scope_map.get(current_scope_id)
             if not scope:
                 break
             
             # 查找该作用域对应的符号
-            parent_symbol = self._find_scope_symbol(scope, scope_map)
-            if parent_symbol and parent_symbol.name:
+            parent_symbol = self._find_scope_owner_symbol(scope, scope_map)
+            if parent_symbol and parent_symbol.id != symbol.id:
+                # 仅添加名称，不添加类型
                 path_parts.insert(0, parent_symbol.name)
             
             current_scope_id = scope.parent_id
         
         return ".".join(path_parts)
     
-    def _find_scope_symbol(self, scope: Scope, scope_map: Dict[int, Scope]) -> Optional[Symbol]:
+    def _find_scope_owner_symbol(self, scope: Scope, scope_map: Dict[int, Scope]) -> Optional[Symbol]:
         """
-        查找作用域对应的符号（类、函数等）
+        查找作用域的拥有者符号（定义该作用域的类、函数、组件等）
+        
+        策略：
+        1. 优先查找 metadata 中的 owner_symbol_id
+        2. 查找作用域内第一个定义型符号（CLASS/COMPONENT/FUNCTION）
+        3. 根据作用域类型推断
         
         Args:
             scope: 作用域对象
@@ -193,11 +227,28 @@ class ChunkExtractor:
         Returns:
             符号对象或 None
         """
-        # 对于类和函数作用域，查找同名符号
-        for symbol in scope.symbols.values():
-            if symbol.symbol_type in [SymbolType.CLASS, SymbolType.FUNCTION, 
-                                     SymbolType.METHOD, SymbolType.COMPONENT]:
-                return symbol
+        # 策略1: 检查元数据中是否有 owner_symbol_id
+        if 'owner_symbol_id' in scope.metadata:
+            owner_id = scope.metadata['owner_symbol_id']
+            # 在所有作用域中查找该符号
+            for s in scope_map.values():
+                for symbol in s.symbols.values():
+                    if symbol.id == owner_id:
+                        return symbol
+        
+        # 策略2: 根据作用域类型查找对应的符号
+        if scope.scope_type == ScopeType.CLASS:
+            # 查找类符号或组件符号
+            for symbol in scope.symbols.values():
+                if symbol.symbol_type in [SymbolType.CLASS, SymbolType.COMPONENT]:
+                    return symbol
+        elif scope.scope_type == ScopeType.FUNCTION:
+            # 查找函数或方法符号
+            for symbol in scope.symbols.values():
+                if symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD, 
+                                         SymbolType.BUILD_METHOD, SymbolType.STYLE_FUNCTION]:
+                    return symbol
+        
         return None
     
     def _build_context_path(self, symbol: Symbol, scope_map: Dict[int, Scope]) -> str:
@@ -224,7 +275,7 @@ class ChunkExtractor:
         if not parent_scope:
             return ""
         
-        parent_symbol = self._find_scope_symbol(parent_scope, scope_map)
+        parent_symbol = self._find_scope_owner_symbol(parent_scope, scope_map)
         if parent_symbol:
             # 对于 ArkUI 组件，添加装饰器前缀
             if parent_symbol.symbol_type == SymbolType.COMPONENT:

@@ -144,6 +144,19 @@ class SymbolRepository:
                 return_type_model = self.save_type(symbol.return_type, session)
                 return_type_id = return_type_model.id
             
+            # 将 ArkUI 相关字段保存到 meta_data 中
+            meta_data = symbol.metadata.copy() if symbol.metadata else {}
+            if symbol.arkui_decorators:
+                meta_data['arkui_decorators'] = symbol.arkui_decorators
+            if symbol.component_type:
+                meta_data['component_type'] = symbol.component_type
+            if symbol.style_bindings:
+                meta_data['style_bindings'] = symbol.style_bindings
+            if symbol.event_handlers:
+                meta_data['event_handlers'] = symbol.event_handlers
+            if symbol.resource_refs:
+                meta_data['resource_refs'] = symbol.resource_refs
+            
             symbol_model = SymbolModel(
                 name=symbol.name,
                 symbol_type=symbol.symbol_type,
@@ -168,7 +181,7 @@ class SymbolRepository:
                 implements=symbol.implements,
                 documentation=symbol.documentation,
                 decorators=symbol.decorators,
-                meta_data=symbol.metadata
+                meta_data=meta_data
             )
             
             session.add(symbol_model)
@@ -283,6 +296,19 @@ class SymbolRepository:
                     return_type_model = self.save_type(symbol.return_type, session)
                     return_type_id = return_type_model.id
                 
+                # 将 ArkUI 相关字段保存到 meta_data 中
+                meta_data = symbol.metadata.copy() if symbol.metadata else {}
+                if symbol.arkui_decorators:
+                    meta_data['arkui_decorators'] = symbol.arkui_decorators
+                if symbol.component_type:
+                    meta_data['component_type'] = symbol.component_type
+                if symbol.style_bindings:
+                    meta_data['style_bindings'] = symbol.style_bindings
+                if symbol.event_handlers:
+                    meta_data['event_handlers'] = symbol.event_handlers
+                if symbol.resource_refs:
+                    meta_data['resource_refs'] = symbol.resource_refs
+                
                 symbol_model = SymbolModel(
                     name=symbol.name,
                     symbol_type=symbol.symbol_type,
@@ -307,7 +333,7 @@ class SymbolRepository:
                     implements=symbol.implements,
                     documentation=symbol.documentation,
                     decorators=symbol.decorators,
-                    meta_data=symbol.metadata
+                    meta_data=meta_data
                 )
                 
                 session.add(symbol_model)
@@ -352,6 +378,14 @@ class SymbolRepository:
                 nullable=model.return_type_info.nullable
             )
         
+        # 从 meta_data 中提取 ArkUI 相关字段
+        meta_data = model.meta_data or {}
+        arkui_decorators = meta_data.get('arkui_decorators', {})
+        component_type = meta_data.get('component_type')
+        style_bindings = meta_data.get('style_bindings', [])
+        event_handlers = meta_data.get('event_handlers', {})
+        resource_refs = meta_data.get('resource_refs', [])
+        
         return Symbol(
             id=model.id,
             name=model.name,
@@ -375,7 +409,12 @@ class SymbolRepository:
             implements=model.implements or [],
             documentation=model.documentation,
             decorators=model.decorators or [],
-            metadata=model.meta_data or {},
+            metadata=meta_data,
+            arkui_decorators=arkui_decorators,
+            component_type=component_type,
+            style_bindings=style_bindings,
+            event_handlers=event_handlers,
+            resource_refs=resource_refs,
             created_at=model.created_at,
             updated_at=model.updated_at
         )

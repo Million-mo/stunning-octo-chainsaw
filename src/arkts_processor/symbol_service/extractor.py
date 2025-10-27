@@ -195,6 +195,65 @@ class SymbolExtractor(ASTVisitor):
         """
         self.visit_export_statement(node)
     
+    def visit_decorated_export_declaration(self, node: Node) -> None:
+        """
+        访问带装饰器的 export 声明
+        
+        decorated_export_declaration 用于装饰器在 export 之前的情况，结构如下：
+        decorated_export_declaration
+          ├── decorator (@Component, @Styles 等)
+          ├── export (关键字)
+          ├── class/function/struct (关键字)
+          ├── identifier (名称)
+          └── body (class_body/component_body/function_body 等)
+        
+        例如：
+        @Component
+        export class MyComponent { ... }
+        
+        Args:
+            node: decorated_export_declaration 节点
+        """
+        # 提取装饰器信息
+        decorators = self._get_decorators(node)
+        
+        # 检查是否为 export default（通过查找 default 子节点）
+        is_export_default = self._has_child_type(node, "default")
+        
+        # 保存 export 状态和装饰器
+        original_export_state = getattr(self, '_current_is_exported', False)
+        original_export_default_state = getattr(self, '_current_is_export_default', False)
+        original_decorators = getattr(self, '_current_decorators', [])
+        
+        self._current_is_exported = True
+        self._current_is_export_default = is_export_default
+        self._current_decorators = decorators
+        
+        # 根据子节点类型处理不同的声明
+        # decorated_export_declaration 的子节点直接包含 class/function/struct 关键字和 identifier、body
+        # 我们需要识别声明类型并创建对应的符号
+        
+        # 检查是否为 struct (ArkUI 组件)
+        if self._has_child_type(node, "struct"):
+            # 手动构造组件声明并提取
+            self._extract_decorated_export_component(node, decorators)
+        # 检查是否为 class
+        elif self._has_child_type(node, "class"):
+            self._extract_decorated_export_class(node, decorators)
+        # 检查是否为 function
+        elif self._has_child_type(node, "function"):
+            self._extract_decorated_export_function(node, decorators)
+        else:
+            # 对于其他类型，遍历所有命名子节点
+            for child in node.children:
+                if child.is_named and child.type not in ["decorator", "export", "default"]:
+                    self.visit(child)
+        
+        # 恢复状态
+        self._current_is_exported = original_export_state
+        self._current_is_export_default = original_export_default_state
+        self._current_decorators = original_decorators
+    
     # ========== ArkUI 组件声明 ==========
     
     def visit_component_declaration(self, node: Node) -> None:
@@ -1110,3 +1169,177 @@ class SymbolExtractor(ASTVisitor):
                 return match.group(1)
         
         return None
+    
+    # ========== decorated_export_declaration 辅助方法 ==========
+    
+    def _extract_decorated_export_component(self, node: Node, decorators: List[Dict[str, Any]]) -> None:
+        """
+        从 decorated_export_declaration 中提取组件声明
+        
+        Args:
+            node: decorated_export_declaration 节点
+            decorators: 装饰器列表
+        """
+        # 获取组件名
+        name = self._get_identifier_name(node)
+        if not name:
+            return
+        
+        symbol = Symbol(
+            id=None,
+            name=name,
+            symbol_type=SymbolType.COMPONENT,
+            file_path=self.file_path,
+            range=self._create_range(node),
+            scope_id=self.current_scope_id
+        )
+        
+        # 标记 export 状态
+        symbol.is_exported = True
+        symbol.is_export_default = getattr(self, '_current_is_export_default', False)
+        
+        # 提取 ArkUI 装饰器并保存到 decorators 和 arkui_decorators
+        for decorator in decorators:
+            decorator_name = decorator.get("name")
+            if decorator_name:
+                # 添加到通用装饰器列表
+                symbol.decorators.append(f"@{decorator_name}")
+                # 如果是 ArkUI 装饰器，也添加到 arkui_decorators
+                if decorator_name in self.ARKUI_DECORATORS:
+                    symbol.arkui_decorators[decorator_name] = decorator.get("arguments", [])
+        
+        # 确定组件类型
+        if "Entry" in symbol.arkui_decorators:
+            symbol.component_type = "Entry"
+        elif "Preview" in symbol.arkui_decorators:
+            symbol.component_type = "Preview"
+        elif "Component" in symbol.arkui_decorators:
+            symbol.component_type = "Component"
+        elif "CustomDialog" in symbol.arkui_decorators:
+            symbol.component_type = "CustomDialog"
+        
+        # 提取文档注释
+        symbol.documentation = self._extract_documentation(node)
+        
+        self.symbols.append(symbol)
+        
+        # 访问组件成员：查找 component_body 或 class_body 子节点
+        component_body = self._get_child_by_type(node, "component_body") or self._get_child_by_type(node, "class_body")
+        if component_body:
+            parent_scope = self.current_scope_id
+            
+            for child in component_body.children:
+                self.visit(child)
+            
+            self.current_scope_id = parent_scope
+    
+    def _extract_decorated_export_class(self, node: Node, decorators: List[Dict[str, Any]]) -> None:
+        """
+        从 decorated_export_declaration 中提取类声明
+        
+        Args:
+            node: decorated_export_declaration 节点
+            decorators: 装饰器列表
+        """
+        # 获取类名
+        name = self._get_identifier_name(node)
+        if not name:
+            return
+        
+        symbol = Symbol(
+            id=None,
+            name=name,
+            symbol_type=SymbolType.CLASS,
+            file_path=self.file_path,
+            range=self._create_range(node),
+            scope_id=self.current_scope_id
+        )
+        
+        # 标记 export 状态
+        symbol.is_exported = True
+        symbol.is_export_default = getattr(self, '_current_is_export_default', False)
+        
+        # 提取修饰符
+        self._extract_modifiers(node, symbol)
+        
+        # 提取继承信息
+        self._extract_class_heritage(node, symbol)
+        
+        # 保存装饰器信息（包括 ArkUI 装饰器）
+        for decorator in decorators:
+            decorator_name = decorator.get("name")
+            if decorator_name:
+                symbol.decorators.append(f"@{decorator_name}")
+            if decorator_name in self.ARKUI_DECORATORS:
+                symbol.arkui_decorators[decorator_name] = decorator.get("arguments", [])
+        
+        # 提取文档注释
+        symbol.documentation = self._extract_documentation(node)
+        
+        self.symbols.append(symbol)
+        
+        # 访问类成员
+        class_body = self._get_child_by_type(node, "class_body")
+        if class_body:
+            parent_scope = self.current_scope_id
+            
+            for child in class_body.children:
+                self.visit(child)
+            
+            self.current_scope_id = parent_scope
+    
+    def _extract_decorated_export_function(self, node: Node, decorators: List[Dict[str, Any]]) -> None:
+        """
+        从 decorated_export_declaration 中提取函数声明
+        
+        Args:
+            node: decorated_export_declaration 节点
+            decorators: 装饰器列表
+        """
+        # 获取函数名
+        name = self._get_identifier_name(node)
+        if not name:
+            return
+        
+        # 检查是否为 @Styles 装饰的样式函数
+        is_styles = any(d.get("name") == "Styles" for d in decorators)
+        
+        symbol = Symbol(
+            id=None,
+            name=name,
+            symbol_type=SymbolType.STYLE_FUNCTION if is_styles else SymbolType.FUNCTION,
+            file_path=self.file_path,
+            range=self._create_range(node),
+            scope_id=self.current_scope_id
+        )
+        
+        # 标记 export 状态
+        symbol.is_exported = True
+        symbol.is_export_default = getattr(self, '_current_is_export_default', False)
+        
+        # 检查是否为 async 函数
+        if self._has_child_type(node, "async"):
+            symbol.is_async = True
+        
+        # 提取参数
+        parameter_list = self._get_child_by_type(node, "parameter_list")
+        if parameter_list:
+            symbol.parameters = self._extract_parameters(parameter_list)
+        
+        # 提取返回类型
+        type_annotation = self._get_child_by_type(node, "type_annotation")
+        if type_annotation:
+            symbol.return_type = self._extract_type_info(type_annotation)
+        
+        # 保存装饰器信息
+        for decorator in decorators:
+            decorator_name = decorator.get("name")
+            if decorator_name:
+                symbol.decorators.append(f"@{decorator_name}")
+            if decorator_name in self.ARKUI_DECORATORS:
+                symbol.arkui_decorators[decorator_name] = decorator.get("arguments", [])
+        
+        # 提取文档注释
+        symbol.documentation = self._extract_documentation(node)
+        
+        self.symbols.append(symbol)

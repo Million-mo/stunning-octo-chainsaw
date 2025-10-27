@@ -1,6 +1,6 @@
 # Core dependencies
 tree-sitter>=0.20.0
-tree-sitter-arkts-open>=0.1.0  # ArkTS语法解析器（已公开发布）
+tree-sitter-arkts-open>=0.1.8  # ArkTS语法解析器（已公开发布）
 
 # Database
 sqlalchemy>=2.0.0

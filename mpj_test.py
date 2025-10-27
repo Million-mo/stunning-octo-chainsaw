@@ -49,16 +49,18 @@ chunk_service = ChunkService(symbol_service, ":memory:")  # 使用内存数据�
 # 2. 处理项目中的所有 .ets 文件
 from pathlib import Path
 
-# project_files = list(Path("/Users/million_mo/projects/hmos_projects/hmosworld/").rglob("*.ets"))
-# all_chunks = []
-# for file_path in project_files:
-#     chunks = chunk_service.generate_chunks(str(file_path))
-#     all_chunks.extend(chunks)
-#     print(f"处理了 {file_path}: {len(chunks)} 个 Chunk")
+project_files = list(Path("/Users/million_mo/projects/hmos_projects/hmosworld/").rglob("*.ets"))
+all_chunks = []
+for file_path in project_files:
+    chunks = chunk_service.generate_chunks(str(file_path))
+    all_chunks.extend(chunks)
+    print(f"处理了 {file_path}: {len(chunks)} 个 Chunk")
 
-# print(f"\n总计 {len(all_chunks)} 个可嵌入文本")
+print(f"\n总计 {len(all_chunks)} 个可嵌入文本")
 
 # file_path = "/Users/million_mo/projects/hmos_projects/hmosworld/HMOSWorld/Application/features/login/src/main/ets/pages/LoginPage.ets"
-file_path = "example.ets"
-chunks = chunk_service.generate_chunks(file_path=str(file_path))
-print(f"处理了 {file_path}: {len(chunks)} 个 Chunk")
+# file_path = "/Users/million_mo/projects/hmos_projects/hmosworld/HMOSWorld/Application/commons/aspect/src/main/ets/service/AspectTrigger.ets"
+# file_path = "/Users/million_mo/projects/hmos_projects/hmosworld/HMOSWorld/Application/features/challenge/src/main/ets/model/ZonesItem.ets"
+# file_path = "example.ets"
+# chunks = chunk_service.generate_chunks(file_path=str(file_path))
+# print(f"处理了 {file_path}: {len(chunks)} 个 Chunk")
